@@ -1,0 +1,798 @@
+<title>Control de Tareas — Laboratorio de Calidad</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #f2f4ef;
+    --surface: #fdfdfb;
+    --surface-raised: #ffffff;
+    --ink: #182420;
+    --ink-soft: #4c5a53;
+    --border: #d7ddd0;
+    --accent: #1e6e62;
+    --accent-ink: #0d3a33;
+    --accent-soft: #dcece7;
+    --success: #2f7a4f;
+    --success-soft: #e2f0e6;
+    --warning: #a6740e;
+    --warning-soft: #f5ebd4;
+    --critical: #b23a3a;
+    --critical-soft: #f6e0df;
+    --info: #4a5f6b;
+    --info-soft: #e4eaec;
+    --shadow: 0 1px 2px rgba(20, 30, 25, 0.06), 0 4px 16px rgba(20, 30, 25, 0.05);
+    --radius: 8px;
+    --font-display: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101512;
+      --surface: #171e1a;
+      --surface-raised: #1d2521;
+      --ink: #e7ece7;
+      --ink-soft: #a4b0a8;
+      --border: #2b352f;
+      --accent: #52bda9;
+      --accent-ink: #d3f0e9;
+      --accent-soft: #1c3833;
+      --success: #55b17d;
+      --success-soft: #1c3327;
+      --warning: #d9ab4a;
+      --warning-soft: #3a2f16;
+      --critical: #e0837c;
+      --critical-soft: #3a2422;
+      --info: #93a8b3;
+      --info-soft: #212c31;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 20px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101512;
+    --surface: #171e1a;
+    --surface-raised: #1d2521;
+    --ink: #e7ece7;
+    --ink-soft: #a4b0a8;
+    --border: #2b352f;
+    --accent: #52bda9;
+    --accent-ink: #d3f0e9;
+    --accent-soft: #1c3833;
+    --success: #55b17d;
+    --success-soft: #1c3327;
+    --warning: #d9ab4a;
+    --warning-soft: #3a2f16;
+    --critical: #e0837c;
+    --critical-soft: #3a2422;
+    --info: #93a8b3;
+    --info-soft: #212c31;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 20px rgba(0, 0, 0, 0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f2f4ef;
+    --surface: #fdfdfb;
+    --surface-raised: #ffffff;
+    --ink: #182420;
+    --ink-soft: #4c5a53;
+    --border: #d7ddd0;
+    --accent: #1e6e62;
+    --accent-ink: #0d3a33;
+    --accent-soft: #dcece7;
+    --success: #2f7a4f;
+    --success-soft: #e2f0e6;
+    --warning: #a6740e;
+    --warning-soft: #f5ebd4;
+    --critical: #b23a3a;
+    --critical-soft: #f6e0df;
+    --info: #4a5f6b;
+    --info-soft: #e4eaec;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--accent-soft); color: var(--accent-ink); }
+
+  a { color: var(--accent); }
+
+  .shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 24px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* ---------- Header ---------- */
+  .masthead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 16px;
+  }
+  .masthead-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.9rem;
+    margin: 0;
+    letter-spacing: 0.2px;
+    text-wrap: balance;
+  }
+  .masthead-meta {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- Stat strip ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .stat-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--tile-color, var(--accent));
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    box-shadow: var(--shadow);
+  }
+  .stat-tile .num {
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .stat-tile .label {
+    margin-top: 4px;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    box-shadow: var(--shadow);
+  }
+  .toolbar input[type="search"] {
+    flex: 1 1 200px;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .field label {
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  select, input[type="search"], input[type="text"], input[type="date"], textarea {
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    color: var(--ink);
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 9px;
+  }
+  select:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .spacer { flex: 1 1 auto; }
+
+  button {
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    cursor: pointer;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    color: var(--ink);
+    padding: 8px 14px;
+  }
+  button:hover { border-color: var(--accent); }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #ffffff;
+    font-weight: 600;
+  }
+  .btn-primary:hover { filter: brightness(1.06); }
+  .btn-ghost {
+    border-color: transparent;
+    background: transparent;
+    padding: 6px 8px;
+  }
+  .btn-danger-ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--critical);
+    padding: 6px 8px;
+  }
+
+  /* ---------- Table ---------- */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 880px;
+  }
+  thead th {
+    text-align: left;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th .arrow { opacity: 0.5; font-size: 0.7em; margin-left: 3px; }
+  tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    font-size: 0.87rem;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+  tbody tr.is-overdue { background: color-mix(in srgb, var(--critical-soft) 55%, transparent); }
+  tbody tr.is-overdue:hover { background: color-mix(in srgb, var(--critical-soft) 75%, transparent); }
+
+  .lote {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .producto-cell .producto { font-weight: 600; }
+  .producto-cell .ensayo { color: var(--ink-soft); font-size: 0.78rem; }
+  .fecha { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .fecha.overdue { color: var(--critical); font-weight: 600; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .chip::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .chip-pendiente { background: var(--info-soft); color: var(--info); }
+  .chip-analisis { background: var(--warning-soft); color: var(--warning); }
+  .chip-revision { background: var(--accent-soft); color: var(--accent-ink); }
+  .chip-aprobado { background: var(--success-soft); color: var(--success); }
+  .chip-rechazado { background: var(--critical-soft); color: var(--critical); }
+
+  .priority-alta { color: var(--critical); font-weight: 700; }
+  .priority-media { color: var(--warning); font-weight: 700; }
+  .priority-baja { color: var(--ink-soft); font-weight: 700; }
+
+  .row-actions {
+    display: flex;
+    gap: 2px;
+    justify-content: flex-end;
+  }
+
+  .empty-state {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--ink-soft);
+  }
+  .empty-state .glyph { font-family: var(--font-display); font-size: 2rem; color: var(--accent); margin-bottom: 8px; }
+
+  /* ---------- Modal ---------- */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 15, 12, 0.45);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 5vh 16px;
+    z-index: 20;
+  }
+  .modal-backdrop[hidden] { display: none; }
+  .modal {
+    background: var(--surface-raised);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 560px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .modal h2 {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    margin: 0;
+  }
+  .modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .modal-grid .full { grid-column: 1 / -1; }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  textarea { resize: vertical; min-height: 56px; font-family: var(--font-ui); }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap; border: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .modal { animation: rise 0.14s ease-out; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 640px) {
+    .modal-grid { grid-template-columns: 1fr; }
+    thead th:nth-child(4), tbody td:nth-child(4) { display: none; }
+  }
+</style>
+
+<div class="shell">
+  <header class="masthead">
+    <div class="masthead-title">
+      <span class="eyebrow">Control de Calidad · Farmacéutico</span>
+      <h1>Tareas del laboratorio</h1>
+    </div>
+    <div class="masthead-meta" id="today-label"></div>
+  </header>
+
+  <section class="stats" id="stats" aria-label="Resumen de tareas"></section>
+
+  <section class="toolbar" aria-label="Filtros">
+    <div class="field" style="flex:1 1 220px;">
+      <label for="f-search">Buscar</label>
+      <input type="search" id="f-search" placeholder="Lote, producto o analista…" />
+    </div>
+    <div class="field">
+      <label for="f-estado">Estado</label>
+      <select id="f-estado">
+        <option value="">Todos</option>
+        <option value="pendiente">Pendiente</option>
+        <option value="analisis">En análisis</option>
+        <option value="revision">En revisión</option>
+        <option value="aprobado">Aprobado</option>
+        <option value="rechazado">Rechazado / OOS</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="f-prioridad">Prioridad</label>
+      <select id="f-prioridad">
+        <option value="">Todas</option>
+        <option value="alta">Alta</option>
+        <option value="media">Media</option>
+        <option value="baja">Baja</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="f-ensayo">Tipo de ensayo</label>
+      <select id="f-ensayo">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="f-analista">Analista</label>
+      <select id="f-analista">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn-primary" id="btn-new" type="button">+ Nueva tarea</button>
+  </section>
+
+  <section class="table-wrap" aria-label="Listado de tareas">
+    <table id="task-table">
+      <thead>
+        <tr>
+          <th data-sort="lote">Lote <span class="arrow"></span></th>
+          <th data-sort="producto">Producto / Ensayo <span class="arrow"></span></th>
+          <th data-sort="analista">Analista <span class="arrow"></span></th>
+          <th data-sort="prioridad">Prioridad <span class="arrow"></span></th>
+          <th data-sort="fecha">Vence <span class="arrow"></span></th>
+          <th data-sort="estado">Estado <span class="arrow"></span></th>
+          <th style="width:1%;"></th>
+        </tr>
+      </thead>
+      <tbody id="task-body"></tbody>
+    </table>
+    <div class="empty-state" id="empty-state" hidden>
+      <div class="glyph">◇</div>
+      <div>No hay tareas que coincidan con los filtros actuales.</div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop" hidden>
+  <form class="modal" id="task-form">
+    <h2 id="modal-title">Nueva tarea</h2>
+    <input type="hidden" id="m-id" />
+    <div class="modal-grid">
+      <div class="field">
+        <label for="m-lote">Lote / Batch</label>
+        <input type="text" id="m-lote" required placeholder="p. ej. L-24089" />
+      </div>
+      <div class="field">
+        <label for="m-producto">Producto</label>
+        <input type="text" id="m-producto" required placeholder="p. ej. Amoxicilina 500 mg" />
+      </div>
+      <div class="field">
+        <label for="m-ensayo">Tipo de ensayo</label>
+        <select id="m-ensayo">
+          <option>Valoración</option>
+          <option>Disolución</option>
+          <option>Identificación</option>
+          <option>Sustancias relacionadas</option>
+          <option>Uniformidad de contenido</option>
+          <option>Microbiológico</option>
+          <option>Agua / Residual</option>
+          <option>Estabilidad</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="m-analista">Analista asignado</label>
+        <input type="text" id="m-analista" required placeholder="p. ej. M. Torres" />
+      </div>
+      <div class="field">
+        <label for="m-prioridad">Prioridad</label>
+        <select id="m-prioridad">
+          <option value="alta">Alta</option>
+          <option value="media" selected>Media</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="m-fecha">Fecha límite</label>
+        <input type="date" id="m-fecha" required />
+      </div>
+      <div class="field full">
+        <label for="m-estado">Estado</label>
+        <select id="m-estado">
+          <option value="pendiente">Pendiente</option>
+          <option value="analisis">En análisis</option>
+          <option value="revision">En revisión</option>
+          <option value="aprobado">Aprobado</option>
+          <option value="rechazado">Rechazado / OOS</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label for="m-notas">Notas</label>
+        <textarea id="m-notas" placeholder="Observaciones, método, referencia de protocolo…"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" id="btn-cancel">Cancelar</button>
+      <button type="submit" class="btn-primary">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "qc_lab_tasks_v1";
+  var ESTADOS = {
+    pendiente: { label: "Pendiente", chip: "chip-pendiente" },
+    analisis: { label: "En análisis", chip: "chip-analisis" },
+    revision: { label: "En revisión", chip: "chip-revision" },
+    aprobado: { label: "Aprobado", chip: "chip-aprobado" },
+    rechazado: { label: "Rechazado / OOS", chip: "chip-rechazado" }
+  };
+  var PRIORIDADES = { alta: "Alta", media: "Media", baja: "Baja" };
+
+  var seed = [
+    { id: uid(), lote: "L-24089", producto: "Amoxicilina 500 mg", ensayo: "Disolución", analista: "M. Torres", prioridad: "alta", estado: "analisis", fecha: addDays(1), notas: "USP <711>, aparato 2." },
+    { id: uid(), lote: "L-24091", producto: "Ibuprofeno 400 mg", ensayo: "Valoración", analista: "R. Gómez", prioridad: "media", estado: "pendiente", fecha: addDays(3), notas: "" },
+    { id: uid(), lote: "L-24077", producto: "Paracetamol 1g", ensayo: "Sustancias relacionadas", analista: "M. Torres", prioridad: "alta", estado: "rechazado", fecha: addDays(-2), notas: "Resultado fuera de especificación, en investigación." },
+    { id: uid(), lote: "L-24102", producto: "Omeprazol 20 mg", ensayo: "Microbiológico", analista: "C. Duarte", prioridad: "baja", estado: "revision", fecha: addDays(5), notas: "" },
+    { id: uid(), lote: "L-24065", producto: "Metformina 850 mg", ensayo: "Uniformidad de contenido", analista: "R. Gómez", prioridad: "media", estado: "aprobado", fecha: addDays(-6), notas: "Liberado, ver COA-24065." }
+  ];
+
+  function uid() { return "t" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+  function addDays(n) {
+    var d = new Date();
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return seed.slice();
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : seed.slice();
+    } catch (e) { return seed.slice(); }
+  }
+  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
+
+  var tasks = load();
+  var sortKey = "fecha";
+  var sortDir = 1;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var fSearch = $("f-search"), fEstado = $("f-estado"), fPrioridad = $("f-prioridad"),
+      fEnsayo = $("f-ensayo"), fAnalista = $("f-analista");
+  var body = $("task-body"), emptyState = $("empty-state"), statsEl = $("stats");
+  var backdrop = $("modal-backdrop"), form = $("task-form"), modalTitle = $("modal-title");
+
+  $("today-label").textContent = "Hoy · " + new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
+
+  function isOverdue(t) {
+    return t.fecha < todayStr() && t.estado !== "aprobado" && t.estado !== "rechazado";
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function refreshFacetOptions() {
+    var ensayos = uniqueSorted(tasks.map(function (t) { return t.ensayo; }));
+    var analistas = uniqueSorted(tasks.map(function (t) { return t.analista; }));
+    fillSelect(fEnsayo, ensayos);
+    fillSelect(fAnalista, analistas);
+  }
+  function uniqueSorted(arr) {
+    var seen = {}; var out = [];
+    arr.forEach(function (v) { if (v && !seen[v]) { seen[v] = true; out.push(v); } });
+    out.sort();
+    return out;
+  }
+  function fillSelect(select, values) {
+    var current = select.value;
+    select.innerHTML = '<option value="">Todos</option>';
+    values.forEach(function (v) {
+      var opt = document.createElement("option");
+      opt.value = v; opt.textContent = v;
+      select.appendChild(opt);
+    });
+    if (values.indexOf(current) !== -1) select.value = current;
+  }
+
+  function computeStats() {
+    var pendientes = 0, analisis = 0, vencidas = 0, aprobadasHoy = 0;
+    tasks.forEach(function (t) {
+      if (t.estado === "pendiente") pendientes++;
+      if (t.estado === "analisis" || t.estado === "revision") analisis++;
+      if (isOverdue(t)) vencidas++;
+      if (t.estado === "aprobado" && t.fecha === todayStr()) aprobadasHoy++;
+    });
+    return [
+      { num: pendientes, label: "Pendientes", color: "var(--info)" },
+      { num: analisis, label: "En proceso", color: "var(--warning)" },
+      { num: vencidas, label: "Vencidas", color: "var(--critical)" },
+      { num: tasks.length, label: "Total activo", color: "var(--accent)" }
+    ];
+  }
+
+  function renderStats() {
+    var stats = computeStats();
+    statsEl.innerHTML = stats.map(function (s) {
+      return '<div class="stat-tile" style="--tile-color:' + s.color + ';">' +
+        '<div class="num">' + s.num + "</div>" +
+        '<div class="label">' + escapeHtml(s.label) + "</div>" +
+        "</div>";
+    }).join("");
+  }
+
+  function applyFilters(list) {
+    var q = fSearch.value.trim().toLowerCase();
+    return list.filter(function (t) {
+      if (fEstado.value && t.estado !== fEstado.value) return false;
+      if (fPrioridad.value && t.prioridad !== fPrioridad.value) return false;
+      if (fEnsayo.value && t.ensayo !== fEnsayo.value) return false;
+      if (fAnalista.value && t.analista !== fAnalista.value) return false;
+      if (q) {
+        var hay = (t.lote + " " + t.producto + " " + t.analista).toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function sortTasks(list) {
+    var prioOrder = { alta: 0, media: 1, baja: 2 };
+    var copy = list.slice();
+    copy.sort(function (a, b) {
+      var av, bv;
+      if (sortKey === "prioridad") { av = prioOrder[a.prioridad]; bv = prioOrder[b.prioridad]; }
+      else if (sortKey === "estado") { av = a.estado; bv = b.estado; }
+      else { av = a[sortKey]; bv = b[sortKey]; }
+      if (av < bv) return -1 * sortDir;
+      if (av > bv) return 1 * sortDir;
+      return 0;
+    });
+    return copy;
+  }
+
+  function render() {
+    renderStats();
+    refreshFacetOptions();
+    var list = sortTasks(applyFilters(tasks));
+    body.innerHTML = "";
+    emptyState.hidden = list.length !== 0;
+
+    list.forEach(function (t) {
+      var overdue = isOverdue(t);
+      var tr = document.createElement("tr");
+      tr.className = overdue ? "is-overdue" : "";
+      var estadoInfo = ESTADOS[t.estado];
+      tr.innerHTML =
+        '<td class="lote">' + escapeHtml(t.lote) + "</td>" +
+        '<td class="producto-cell"><div class="producto">' + escapeHtml(t.producto) + '</div><div class="ensayo">' + escapeHtml(t.ensayo) + "</div></td>" +
+        "<td>" + escapeHtml(t.analista) + "</td>" +
+        '<td class="priority-' + t.prioridad + '">' + PRIORIDADES[t.prioridad] + "</td>" +
+        '<td class="fecha' + (overdue ? " overdue" : "") + '">' + formatDate(t.fecha) + "</td>" +
+        '<td><span class="chip ' + estadoInfo.chip + '">' + estadoInfo.label + "</span></td>" +
+        '<td><div class="row-actions">' +
+          '<button type="button" class="btn-ghost" data-action="edit" data-id="' + t.id + '" title="Editar" aria-label="Editar tarea">✎</button>' +
+          '<button type="button" class="btn-danger-ghost" data-action="delete" data-id="' + t.id + '" title="Eliminar" aria-label="Eliminar tarea">✕</button>' +
+        "</div></td>";
+      body.appendChild(tr);
+    });
+
+    document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
+      var arrow = th.querySelector(".arrow");
+      arrow.textContent = th.getAttribute("data-sort") === sortKey ? (sortDir === 1 ? "▲" : "▼") : "";
+    });
+  }
+
+  function formatDate(iso) {
+    var d = new Date(iso + "T00:00:00");
+    return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
+  document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
+    th.addEventListener("click", function () {
+      var key = th.getAttribute("data-sort");
+      if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+      render();
+    });
+  });
+
+  [fSearch, fEstado, fPrioridad, fEnsayo, fAnalista].forEach(function (el) {
+    el.addEventListener("input", render);
+  });
+
+  body.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    var id = btn.getAttribute("data-id");
+    if (btn.getAttribute("data-action") === "edit") openModal(id);
+    else if (btn.getAttribute("data-action") === "delete") {
+      var t = tasks.find(function (x) { return x.id === id; });
+      if (t && confirm('Eliminar la tarea del lote "' + t.lote + '"?')) {
+        tasks = tasks.filter(function (x) { return x.id !== id; });
+        save(); render();
+      }
+    }
+  });
+
+  function openModal(id) {
+    form.reset();
+    var t = id ? tasks.find(function (x) { return x.id === id; }) : null;
+    modalTitle.textContent = t ? "Editar tarea" : "Nueva tarea";
+    $("m-id").value = t ? t.id : "";
+    $("m-lote").value = t ? t.lote : "";
+    $("m-producto").value = t ? t.producto : "";
+    $("m-ensayo").value = t ? t.ensayo : "Valoración";
+    $("m-analista").value = t ? t.analista : "";
+    $("m-prioridad").value = t ? t.prioridad : "media";
+    $("m-fecha").value = t ? t.fecha : todayStr();
+    $("m-estado").value = t ? t.estado : "pendiente";
+    $("m-notas").value = t ? t.notas || "" : "";
+    backdrop.hidden = false;
+    $("m-lote").focus();
+  }
+  function closeModal() { backdrop.hidden = true; }
+
+  $("btn-new").addEventListener("click", function () { openModal(null); });
+  $("btn-cancel").addEventListener("click", closeModal);
+  backdrop.addEventListener("click", function (e) { if (e.target === backdrop) closeModal(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !backdrop.hidden) closeModal(); });
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var id = $("m-id").value;
+    var data = {
+      lote: $("m-lote").value.trim(),
+      producto: $("m-producto").value.trim(),
+      ensayo: $("m-ensayo").value,
+      analista: $("m-analista").value.trim(),
+      prioridad: $("m-prioridad").value,
+      fecha: $("m-fecha").value,
+      estado: $("m-estado").value,
+      notas: $("m-notas").value.trim()
+    };
+    if (id) {
+      var existing = tasks.find(function (x) { return x.id === id; });
+      Object.assign(existing, data);
+    } else {
+      data.id = uid();
+      tasks.push(data);
+    }
+    save();
+    closeModal();
+    render();
+  });
+
+  render();
+})();
+</script>
