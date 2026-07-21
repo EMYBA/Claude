@@ -248,14 +248,61 @@
     padding: 6px 8px;
   }
 
-  /* ---------- Table ---------- */
-  .table-wrap {
+  /* ---------- Urgency buckets ---------- */
+  .buckets {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .bucket {
     background: var(--surface);
     border: 1px solid var(--border);
+    border-left: 4px solid var(--bucket-color, var(--accent));
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    overflow-x: auto;
+    overflow: hidden;
   }
+  .bucket > summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    list-style: none;
+    font-weight: 600;
+  }
+  .bucket > summary::-webkit-details-marker { display: none; }
+  .bucket > summary::before {
+    content: "▸";
+    color: var(--bucket-color, var(--accent));
+    transition: transform 0.12s ease;
+    font-size: 0.8em;
+  }
+  .bucket[open] > summary::before { transform: rotate(90deg); }
+  .bucket-name { color: var(--ink); }
+  .bucket-count {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--bucket-color, var(--accent));
+    background: color-mix(in srgb, var(--bucket-color, var(--accent)) 16%, transparent);
+    padding: 1px 8px;
+    border-radius: 999px;
+  }
+  .bucket-hint {
+    font-weight: 400;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin-left: 2px;
+  }
+  .bucket .table-wrap {
+    overflow-x: auto;
+    border-top: 1px solid var(--border);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .bucket[open] > .table-wrap { animation: rise 0.14s ease-out; }
+  }
+
   table {
     width: 100%;
     border-collapse: collapse;
@@ -271,10 +318,7 @@
     padding: 10px 14px;
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
-    cursor: pointer;
-    user-select: none;
   }
-  thead th .arrow { opacity: 0.5; font-size: 0.7em; margin-left: 3px; }
   tbody td {
     padding: 11px 14px;
     border-bottom: 1px solid var(--border);
@@ -330,6 +374,10 @@
   }
 
   .empty-state {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
     padding: 48px 24px;
     text-align: center;
     color: var(--ink-soft);
@@ -454,26 +502,11 @@
     <button class="btn-primary" id="btn-new" type="button">+ Nueva tarea</button>
   </section>
 
-  <section class="table-wrap" aria-label="Listado de tareas">
-    <table id="task-table">
-      <thead>
-        <tr>
-          <th data-sort="lote">Lote <span class="arrow"></span></th>
-          <th data-sort="producto">Producto / Ensayo <span class="arrow"></span></th>
-          <th data-sort="analista">Analista <span class="arrow"></span></th>
-          <th data-sort="prioridad">Prioridad <span class="arrow"></span></th>
-          <th data-sort="fecha">Vence <span class="arrow"></span></th>
-          <th data-sort="estado">Estado <span class="arrow"></span></th>
-          <th style="width:1%;"></th>
-        </tr>
-      </thead>
-      <tbody id="task-body"></tbody>
-    </table>
-    <div class="empty-state" id="empty-state" hidden>
-      <div class="glyph">◇</div>
-      <div>No hay tareas que coincidan con los filtros actuales.</div>
-    </div>
-  </section>
+  <section class="buckets" id="buckets" aria-label="Tareas agrupadas por urgencia"></section>
+  <div class="empty-state" id="empty-state" hidden>
+    <div class="glyph">◇</div>
+    <div>No hay tareas que coincidan con los filtros actuales.</div>
+  </div>
 </div>
 
 <div class="modal-backdrop" id="modal-backdrop" hidden>
@@ -582,13 +615,20 @@
   function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
 
   var tasks = load();
-  var sortKey = "fecha";
-  var sortDir = 1;
+  var openState = {};
+
+  var BUCKET_DEFS = [
+    { key: "vencidas", label: "Vencidas", hint: "necesitan acción ya", color: "var(--critical)", openDefault: true },
+    { key: "hoy", label: "Hoy", hint: "vencen hoy", color: "var(--warning)", openDefault: true },
+    { key: "semana", label: "Esta semana", hint: "próximos 7 días", color: "var(--accent)", openDefault: true },
+    { key: "adelante", label: "Más adelante", hint: "sin urgencia inmediata", color: "var(--info)", openDefault: false },
+    { key: "finalizadas", label: "Finalizadas", hint: "aprobadas o rechazadas", color: "var(--success)", openDefault: false }
+  ];
 
   var $ = function (id) { return document.getElementById(id); };
   var fSearch = $("f-search"), fEstado = $("f-estado"), fPrioridad = $("f-prioridad"),
       fEnsayo = $("f-ensayo"), fAnalista = $("f-analista");
-  var body = $("task-body"), emptyState = $("empty-state"), statsEl = $("stats");
+  var bucketsEl = $("buckets"), emptyState = $("empty-state"), statsEl = $("stats");
   var backdrop = $("modal-backdrop"), form = $("task-form"), modalTitle = $("modal-title");
 
   $("today-label").textContent = "Hoy · " + new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
@@ -627,18 +667,21 @@
   }
 
   function computeStats() {
-    var pendientes = 0, analisis = 0, vencidas = 0, aprobadasHoy = 0;
+    var today = todayStr();
+    var weekLimit = addDays(7);
+    var vencidas = 0, hoy = 0, semana = 0, activas = 0;
     tasks.forEach(function (t) {
-      if (t.estado === "pendiente") pendientes++;
-      if (t.estado === "analisis" || t.estado === "revision") analisis++;
-      if (isOverdue(t)) vencidas++;
-      if (t.estado === "aprobado" && t.fecha === todayStr()) aprobadasHoy++;
+      if (t.estado === "aprobado" || t.estado === "rechazado") return;
+      activas++;
+      if (t.fecha < today) vencidas++;
+      else if (t.fecha === today) hoy++;
+      else if (t.fecha <= weekLimit) semana++;
     });
     return [
-      { num: pendientes, label: "Pendientes", color: "var(--info)" },
-      { num: analisis, label: "En proceso", color: "var(--warning)" },
       { num: vencidas, label: "Vencidas", color: "var(--critical)" },
-      { num: tasks.length, label: "Total activo", color: "var(--accent)" }
+      { num: hoy, label: "Vencen hoy", color: "var(--warning)" },
+      { num: semana, label: "Esta semana", color: "var(--accent)" },
+      { num: activas, label: "Activas en total", color: "var(--info)" }
     ];
   }
 
@@ -667,50 +710,71 @@
     });
   }
 
-  function sortTasks(list) {
-    var prioOrder = { alta: 0, media: 1, baja: 2 };
-    var copy = list.slice();
-    copy.sort(function (a, b) {
-      var av, bv;
-      if (sortKey === "prioridad") { av = prioOrder[a.prioridad]; bv = prioOrder[b.prioridad]; }
-      else if (sortKey === "estado") { av = a.estado; bv = b.estado; }
-      else { av = a[sortKey]; bv = b[sortKey]; }
-      if (av < bv) return -1 * sortDir;
-      if (av > bv) return 1 * sortDir;
-      return 0;
+  function bucketize(list) {
+    var today = todayStr();
+    var weekLimit = addDays(7);
+    var groups = { vencidas: [], hoy: [], semana: [], adelante: [], finalizadas: [] };
+    list.forEach(function (t) {
+      if (t.estado === "aprobado" || t.estado === "rechazado") { groups.finalizadas.push(t); return; }
+      if (t.fecha < today) groups.vencidas.push(t);
+      else if (t.fecha === today) groups.hoy.push(t);
+      else if (t.fecha <= weekLimit) groups.semana.push(t);
+      else groups.adelante.push(t);
     });
-    return copy;
+    var prioOrder = { alta: 0, media: 1, baja: 2 };
+    Object.keys(groups).forEach(function (k) {
+      groups[k].sort(function (a, b) {
+        if (prioOrder[a.prioridad] !== prioOrder[b.prioridad]) return prioOrder[a.prioridad] - prioOrder[b.prioridad];
+        return a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0;
+      });
+    });
+    return groups;
+  }
+
+  function buildRowHtml(t) {
+    var overdue = isOverdue(t);
+    var estadoInfo = ESTADOS[t.estado];
+    return '<tr class="' + (overdue ? "is-overdue" : "") + '">' +
+      '<td class="lote">' + escapeHtml(t.lote) + "</td>" +
+      '<td class="producto-cell"><div class="producto">' + escapeHtml(t.producto) + '</div><div class="ensayo">' + escapeHtml(t.ensayo) + "</div></td>" +
+      "<td>" + escapeHtml(t.analista) + "</td>" +
+      '<td class="priority-' + t.prioridad + '">' + PRIORIDADES[t.prioridad] + "</td>" +
+      '<td class="fecha' + (overdue ? " overdue" : "") + '">' + formatDate(t.fecha) + "</td>" +
+      '<td><span class="chip ' + estadoInfo.chip + '">' + estadoInfo.label + "</span></td>" +
+      '<td><div class="row-actions">' +
+        '<button type="button" class="btn-ghost" data-action="edit" data-id="' + t.id + '" title="Editar" aria-label="Editar tarea">✎</button>' +
+        '<button type="button" class="btn-danger-ghost" data-action="delete" data-id="' + t.id + '" title="Eliminar" aria-label="Eliminar tarea">✕</button>' +
+      "</div></td>" +
+    "</tr>";
+  }
+
+  function buildBucketHtml(def, list) {
+    var isOpen = openState.hasOwnProperty(def.key) ? openState[def.key] : def.openDefault;
+    var rows = list.map(buildRowHtml).join("");
+    return '<details class="bucket" data-bucket="' + def.key + '" style="--bucket-color:' + def.color + ';"' + (isOpen ? " open" : "") + ">" +
+      '<summary><span class="bucket-name">' + def.label + '</span><span class="bucket-count">' + list.length + '</span><span class="bucket-hint">' + def.hint + "</span></summary>" +
+      '<div class="table-wrap"><table><thead><tr>' +
+        "<th>Lote</th><th>Producto / Ensayo</th><th>Analista</th><th>Prioridad</th><th>Vence</th><th>Estado</th><th style=\"width:1%;\"></th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+    "</details>";
   }
 
   function render() {
     renderStats();
     refreshFacetOptions();
-    var list = sortTasks(applyFilters(tasks));
-    body.innerHTML = "";
-    emptyState.hidden = list.length !== 0;
+    var filtered = applyFilters(tasks);
+    var groups = bucketize(filtered);
+    emptyState.hidden = filtered.length !== 0;
 
-    list.forEach(function (t) {
-      var overdue = isOverdue(t);
-      var tr = document.createElement("tr");
-      tr.className = overdue ? "is-overdue" : "";
-      var estadoInfo = ESTADOS[t.estado];
-      tr.innerHTML =
-        '<td class="lote">' + escapeHtml(t.lote) + "</td>" +
-        '<td class="producto-cell"><div class="producto">' + escapeHtml(t.producto) + '</div><div class="ensayo">' + escapeHtml(t.ensayo) + "</div></td>" +
-        "<td>" + escapeHtml(t.analista) + "</td>" +
-        '<td class="priority-' + t.prioridad + '">' + PRIORIDADES[t.prioridad] + "</td>" +
-        '<td class="fecha' + (overdue ? " overdue" : "") + '">' + formatDate(t.fecha) + "</td>" +
-        '<td><span class="chip ' + estadoInfo.chip + '">' + estadoInfo.label + "</span></td>" +
-        '<td><div class="row-actions">' +
-          '<button type="button" class="btn-ghost" data-action="edit" data-id="' + t.id + '" title="Editar" aria-label="Editar tarea">✎</button>' +
-          '<button type="button" class="btn-danger-ghost" data-action="delete" data-id="' + t.id + '" title="Eliminar" aria-label="Eliminar tarea">✕</button>' +
-        "</div></td>";
-      body.appendChild(tr);
-    });
+    bucketsEl.innerHTML = BUCKET_DEFS
+      .filter(function (def) { return groups[def.key].length > 0; })
+      .map(function (def) { return buildBucketHtml(def, groups[def.key]); })
+      .join("");
 
-    document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
-      var arrow = th.querySelector(".arrow");
-      arrow.textContent = th.getAttribute("data-sort") === sortKey ? (sortDir === 1 ? "▲" : "▼") : "";
+    bucketsEl.querySelectorAll("details.bucket").forEach(function (details) {
+      details.addEventListener("toggle", function () {
+        openState[details.getAttribute("data-bucket")] = details.open;
+      });
     });
   }
 
@@ -719,19 +783,11 @@
     return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
   }
 
-  document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
-    th.addEventListener("click", function () {
-      var key = th.getAttribute("data-sort");
-      if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
-      render();
-    });
-  });
-
   [fSearch, fEstado, fPrioridad, fEnsayo, fAnalista].forEach(function (el) {
     el.addEventListener("input", render);
   });
 
-  body.addEventListener("click", function (e) {
+  bucketsEl.addEventListener("click", function (e) {
     var btn = e.target.closest("button[data-action]");
     if (!btn) return;
     var id = btn.getAttribute("data-id");
