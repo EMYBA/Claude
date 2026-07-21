@@ -177,6 +177,30 @@
     color: var(--ink-soft);
   }
 
+  /* ---------- Quick capture ---------- */
+  .quick-capture {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .quick-capture:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+  #quick-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 6px 6px 14px;
+  }
+  .quick-icon { color: var(--accent); font-size: 1rem; flex: 0 0 auto; }
+  #quick-input {
+    flex: 1 1 auto;
+    border: none;
+    background: transparent;
+    padding: 10px 4px;
+    font-size: 0.95rem;
+  }
+  #quick-input:focus { outline: none; }
+
   /* ---------- Toolbar ---------- */
   .toolbar {
     display: flex;
@@ -279,6 +303,7 @@
     font-size: 0.8em;
   }
   .bucket[open] > summary::before { transform: rotate(90deg); }
+  .bucket.is-inbox { border-left-style: dashed; }
   .bucket-name { color: var(--ink); }
   .bucket-count {
     font-family: var(--font-mono);
@@ -339,6 +364,16 @@
   .producto-cell .ensayo { color: var(--ink-soft); font-size: 0.78rem; }
   .fecha { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .fecha.overdue { color: var(--critical); font-weight: 600; }
+
+  .blocked-note {
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: var(--info);
+    white-space: normal;
+  }
 
   .chip {
     display: inline-flex;
@@ -459,6 +494,15 @@
     <div class="masthead-meta" id="today-label"></div>
   </header>
 
+  <section class="quick-capture" aria-label="Captura rápida">
+    <form id="quick-form">
+      <span class="quick-icon" aria-hidden="true">✎</span>
+      <label for="quick-input" class="sr-only">Anotar algo rápido</label>
+      <input type="text" id="quick-input" placeholder="Anotá algo ya, sin completar nada más — lo organizás después…" />
+      <button type="submit" class="btn-primary">Agregar</button>
+    </form>
+  </section>
+
   <section class="stats" id="stats" aria-label="Resumen de tareas"></section>
 
   <section class="toolbar" aria-label="Filtros">
@@ -562,6 +606,14 @@
           <option value="rechazado">Rechazado / OOS</option>
         </select>
       </div>
+      <div class="field full" style="flex-direction:row; align-items:center; gap:8px;">
+        <input type="checkbox" id="m-bloqueada" style="width:auto;" />
+        <label for="m-bloqueada" style="text-transform:none; letter-spacing:0; font-size:0.85rem;">Bloqueada / en espera de algo</label>
+      </div>
+      <div class="field full" id="m-bloqueada-wrap" hidden>
+        <label for="m-bloqueada-por">Esperando…</label>
+        <input type="text" id="m-bloqueada-por" placeholder="p. ej. reactivo de referencia, resultado de L-24065, equipo HPLC-2" />
+      </div>
       <div class="field full">
         <label for="m-notas">Notas</label>
         <textarea id="m-notas" placeholder="Observaciones, método, referencia de protocolo…"></textarea>
@@ -589,11 +641,12 @@
   var PRIORIDADES = { alta: "Alta", media: "Media", baja: "Baja" };
 
   var seed = [
-    { id: uid(), lote: "L-24089", producto: "Amoxicilina 500 mg", ensayo: "Disolución", analista: "M. Torres", prioridad: "alta", estado: "analisis", fecha: addDays(1), notas: "USP <711>, aparato 2." },
-    { id: uid(), lote: "L-24091", producto: "Ibuprofeno 400 mg", ensayo: "Valoración", analista: "R. Gómez", prioridad: "media", estado: "pendiente", fecha: addDays(3), notas: "" },
-    { id: uid(), lote: "L-24077", producto: "Paracetamol 1g", ensayo: "Sustancias relacionadas", analista: "M. Torres", prioridad: "alta", estado: "rechazado", fecha: addDays(-2), notas: "Resultado fuera de especificación, en investigación." },
-    { id: uid(), lote: "L-24102", producto: "Omeprazol 20 mg", ensayo: "Microbiológico", analista: "C. Duarte", prioridad: "baja", estado: "revision", fecha: addDays(5), notas: "" },
-    { id: uid(), lote: "L-24065", producto: "Metformina 850 mg", ensayo: "Uniformidad de contenido", analista: "R. Gómez", prioridad: "media", estado: "aprobado", fecha: addDays(-6), notas: "Liberado, ver COA-24065." }
+    { id: uid(), lote: "L-24089", producto: "Amoxicilina 500 mg", ensayo: "Disolución", analista: "M. Torres", prioridad: "alta", estado: "analisis", fecha: addDays(1), notas: "USP <711>, aparato 2.", triaged: true, bloqueada: false, bloqueadaPor: "" },
+    { id: uid(), lote: "L-24091", producto: "Ibuprofeno 400 mg", ensayo: "Valoración", analista: "R. Gómez", prioridad: "media", estado: "pendiente", fecha: addDays(3), notas: "", triaged: true, bloqueada: true, bloqueadaPor: "reactivo de referencia (pedido a compras)" },
+    { id: uid(), lote: "L-24077", producto: "Paracetamol 1g", ensayo: "Sustancias relacionadas", analista: "M. Torres", prioridad: "alta", estado: "rechazado", fecha: addDays(-2), notas: "Resultado fuera de especificación, en investigación.", triaged: true, bloqueada: false, bloqueadaPor: "" },
+    { id: uid(), lote: "L-24102", producto: "Omeprazol 20 mg", ensayo: "Microbiológico", analista: "C. Duarte", prioridad: "baja", estado: "revision", fecha: addDays(5), notas: "", triaged: true, bloqueada: false, bloqueadaPor: "" },
+    { id: uid(), lote: "L-24065", producto: "Metformina 850 mg", ensayo: "Uniformidad de contenido", analista: "R. Gómez", prioridad: "media", estado: "aprobado", fecha: addDays(-6), notas: "Liberado, ver COA-24065.", triaged: true, bloqueada: false, bloqueadaPor: "" },
+    { id: uid(), lote: "—", producto: "Che, revisar si el HPLC-1 quedó calibrado después del mantenimiento", ensayo: "Otro", analista: "(sin asignar)", prioridad: "media", estado: "pendiente", fecha: null, notas: "", triaged: false, bloqueada: false, bloqueadaPor: "" }
   ];
 
   function uid() { return "t" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
@@ -618,10 +671,12 @@
   var openState = {};
 
   var BUCKET_DEFS = [
+    { key: "bandeja", label: "Bandeja rápida", hint: "sin completar — tocá ✎ para clasificarla", color: "var(--ink-soft)", openDefault: true, dashed: true },
+    { key: "bloqueadas", label: "Bloqueadas", hint: "esperando algo externo — revisá si ya se destrabaron", color: "var(--info)", openDefault: true },
     { key: "vencidas", label: "Vencidas", hint: "necesitan acción ya", color: "var(--critical)", openDefault: true },
     { key: "hoy", label: "Hoy", hint: "vencen hoy", color: "var(--warning)", openDefault: true },
     { key: "semana", label: "Esta semana", hint: "próximos 7 días", color: "var(--accent)", openDefault: true },
-    { key: "adelante", label: "Más adelante", hint: "sin urgencia inmediata", color: "var(--info)", openDefault: false },
+    { key: "adelante", label: "Más adelante", hint: "sin urgencia inmediata", color: "var(--accent)", openDefault: false },
     { key: "finalizadas", label: "Finalizadas", hint: "aprobadas o rechazadas", color: "var(--success)", openDefault: false }
   ];
 
@@ -630,6 +685,7 @@
       fEnsayo = $("f-ensayo"), fAnalista = $("f-analista");
   var bucketsEl = $("buckets"), emptyState = $("empty-state"), statsEl = $("stats");
   var backdrop = $("modal-backdrop"), form = $("task-form"), modalTitle = $("modal-title");
+  var quickForm = $("quick-form"), quickInput = $("quick-input");
 
   $("today-label").textContent = "Hoy · " + new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
 
@@ -668,20 +724,21 @@
 
   function computeStats() {
     var today = todayStr();
-    var weekLimit = addDays(7);
-    var vencidas = 0, hoy = 0, semana = 0, activas = 0;
+    var sinTriar = 0, vencidas = 0, hoy = 0, bloqueadas = 0, activas = 0;
     tasks.forEach(function (t) {
+      if (!t.triaged) { sinTriar++; return; }
       if (t.estado === "aprobado" || t.estado === "rechazado") return;
       activas++;
+      if (t.bloqueada) { bloqueadas++; return; }
       if (t.fecha < today) vencidas++;
       else if (t.fecha === today) hoy++;
-      else if (t.fecha <= weekLimit) semana++;
     });
     return [
+      { num: sinTriar, label: "Sin triar", color: "var(--ink-soft)" },
       { num: vencidas, label: "Vencidas", color: "var(--critical)" },
       { num: hoy, label: "Vencen hoy", color: "var(--warning)" },
-      { num: semana, label: "Esta semana", color: "var(--accent)" },
-      { num: activas, label: "Activas en total", color: "var(--info)" }
+      { num: bloqueadas, label: "Bloqueadas", color: "var(--info)" },
+      { num: activas, label: "Activas en total", color: "var(--accent)" }
     ];
   }
 
@@ -713,9 +770,11 @@
   function bucketize(list) {
     var today = todayStr();
     var weekLimit = addDays(7);
-    var groups = { vencidas: [], hoy: [], semana: [], adelante: [], finalizadas: [] };
+    var groups = { bandeja: [], bloqueadas: [], vencidas: [], hoy: [], semana: [], adelante: [], finalizadas: [] };
     list.forEach(function (t) {
+      if (!t.triaged) { groups.bandeja.push(t); return; }
       if (t.estado === "aprobado" || t.estado === "rechazado") { groups.finalizadas.push(t); return; }
+      if (t.bloqueada) { groups.bloqueadas.push(t); return; }
       if (t.fecha < today) groups.vencidas.push(t);
       else if (t.fecha === today) groups.hoy.push(t);
       else if (t.fecha <= weekLimit) groups.semana.push(t);
@@ -740,7 +799,9 @@
       "<td>" + escapeHtml(t.analista) + "</td>" +
       '<td class="priority-' + t.prioridad + '">' + PRIORIDADES[t.prioridad] + "</td>" +
       '<td class="fecha' + (overdue ? " overdue" : "") + '">' + formatDate(t.fecha) + "</td>" +
-      '<td><span class="chip ' + estadoInfo.chip + '">' + estadoInfo.label + "</span></td>" +
+      '<td><span class="chip ' + estadoInfo.chip + '">' + estadoInfo.label + "</span>" +
+        (t.bloqueada ? '<div class="blocked-note">⏸ ' + escapeHtml(t.bloqueadaPor || "Bloqueada") + "</div>" : "") +
+      "</td>" +
       '<td><div class="row-actions">' +
         '<button type="button" class="btn-ghost" data-action="edit" data-id="' + t.id + '" title="Editar" aria-label="Editar tarea">✎</button>' +
         '<button type="button" class="btn-danger-ghost" data-action="delete" data-id="' + t.id + '" title="Eliminar" aria-label="Eliminar tarea">✕</button>' +
@@ -751,7 +812,8 @@
   function buildBucketHtml(def, list) {
     var isOpen = openState.hasOwnProperty(def.key) ? openState[def.key] : def.openDefault;
     var rows = list.map(buildRowHtml).join("");
-    return '<details class="bucket" data-bucket="' + def.key + '" style="--bucket-color:' + def.color + ';"' + (isOpen ? " open" : "") + ">" +
+    var cls = "bucket" + (def.dashed ? " is-inbox" : "");
+    return '<details class="' + cls + '" data-bucket="' + def.key + '" style="--bucket-color:' + def.color + ';"' + (isOpen ? " open" : "") + ">" +
       '<summary><span class="bucket-name">' + def.label + '</span><span class="bucket-count">' + list.length + '</span><span class="bucket-hint">' + def.hint + "</span></summary>" +
       '<div class="table-wrap"><table><thead><tr>' +
         "<th>Lote</th><th>Producto / Ensayo</th><th>Analista</th><th>Prioridad</th><th>Vence</th><th>Estado</th><th style=\"width:1%;\"></th>" +
@@ -779,6 +841,7 @@
   }
 
   function formatDate(iso) {
+    if (!iso) return "—";
     var d = new Date(iso + "T00:00:00");
     return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
   }
@@ -806,14 +869,18 @@
     var t = id ? tasks.find(function (x) { return x.id === id; }) : null;
     modalTitle.textContent = t ? "Editar tarea" : "Nueva tarea";
     $("m-id").value = t ? t.id : "";
-    $("m-lote").value = t ? t.lote : "";
+    $("m-lote").value = t && t.lote !== "—" ? t.lote : "";
     $("m-producto").value = t ? t.producto : "";
     $("m-ensayo").value = t ? t.ensayo : "Valoración";
-    $("m-analista").value = t ? t.analista : "";
+    $("m-analista").value = t && t.analista !== "(sin asignar)" ? t.analista : "";
     $("m-prioridad").value = t ? t.prioridad : "media";
-    $("m-fecha").value = t ? t.fecha : todayStr();
+    $("m-fecha").value = (t && t.fecha) ? t.fecha : todayStr();
     $("m-estado").value = t ? t.estado : "pendiente";
     $("m-notas").value = t ? t.notas || "" : "";
+    var blocked = t ? !!t.bloqueada : false;
+    $("m-bloqueada").checked = blocked;
+    $("m-bloqueada-por").value = t ? t.bloqueadaPor || "" : "";
+    $("m-bloqueada-wrap").hidden = !blocked;
     backdrop.hidden = false;
     $("m-lote").focus();
   }
@@ -823,10 +890,14 @@
   $("btn-cancel").addEventListener("click", closeModal);
   backdrop.addEventListener("click", function (e) { if (e.target === backdrop) closeModal(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !backdrop.hidden) closeModal(); });
+  $("m-bloqueada").addEventListener("change", function () {
+    $("m-bloqueada-wrap").hidden = !this.checked;
+  });
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     var id = $("m-id").value;
+    var blocked = $("m-bloqueada").checked;
     var data = {
       lote: $("m-lote").value.trim(),
       producto: $("m-producto").value.trim(),
@@ -835,7 +906,10 @@
       prioridad: $("m-prioridad").value,
       fecha: $("m-fecha").value,
       estado: $("m-estado").value,
-      notas: $("m-notas").value.trim()
+      notas: $("m-notas").value.trim(),
+      bloqueada: blocked,
+      bloqueadaPor: blocked ? $("m-bloqueada-por").value.trim() : "",
+      triaged: true
     };
     if (id) {
       var existing = tasks.find(function (x) { return x.id === id; });
@@ -847,6 +921,30 @@
     save();
     closeModal();
     render();
+  });
+
+  quickForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var text = quickInput.value.trim();
+    if (!text) return;
+    tasks.push({
+      id: uid(),
+      lote: "—",
+      producto: text,
+      ensayo: "Otro",
+      analista: "(sin asignar)",
+      prioridad: "media",
+      estado: "pendiente",
+      fecha: null,
+      notas: "",
+      triaged: false,
+      bloqueada: false,
+      bloqueadaPor: ""
+    });
+    save();
+    quickInput.value = "";
+    render();
+    quickInput.focus();
   });
 
   render();
