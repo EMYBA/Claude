@@ -226,9 +226,6 @@
     padding: 12px;
     box-shadow: var(--shadow);
   }
-  .toolbar input[type="search"] {
-    flex: 1 1 200px;
-  }
   .field {
     display: flex;
     flex-direction: column;
@@ -566,7 +563,49 @@
 
   @media (max-width: 640px) {
     .modal-grid { grid-template-columns: 1fr; }
-    thead th:nth-child(4), tbody td:nth-child(4) { display: none; }
+
+    .bucket .table-wrap { overflow-x: visible; }
+    table { min-width: 0; }
+    thead { display: none; }
+    tbody { display: block; }
+
+    tbody tr[data-row-id] {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        "producto estado"
+        "lote     lote"
+        "analista analista"
+        "prioridad fecha"
+        "actions  actions";
+      column-gap: 10px;
+      row-gap: 5px;
+      padding: 12px 14px;
+    }
+    tbody tr[data-row-id] td {
+      padding: 0;
+      border-bottom: none;
+      font-size: 0.85rem;
+    }
+    td.producto-cell { grid-area: producto; }
+    td.estado-cell { grid-area: estado; justify-self: end; text-align: right; }
+    td.lote { grid-area: lote; }
+    td.analista-cell { grid-area: analista; }
+    td.priority-alta, td.priority-media, td.priority-baja { grid-area: prioridad; }
+    td.fecha { grid-area: fecha; justify-self: end; text-align: right; }
+    td.actions-cell { grid-area: actions; }
+
+    td.lote::before { content: "Lote "; color: var(--ink-soft); font-weight: 400; }
+    td.analista-cell::before { content: "Analista "; color: var(--ink-soft); font-weight: 400; }
+    td.priority-alta::before, td.priority-media::before, td.priority-baja::before {
+      content: "Prioridad "; color: var(--ink-soft); font-weight: 400;
+    }
+    td.fecha::before { content: "Vence "; color: var(--ink-soft); font-weight: 400; }
+
+    td.actions-cell .row-actions { justify-content: flex-end; padding-top: 4px; border-top: 1px dashed var(--border); }
+
+    tbody tr.steps-detail-row { display: block; }
+    .steps-detail-row td { display: block; padding: 0; }
   }
 </style>
 </head>
@@ -952,13 +991,13 @@
     var mainRow = '<tr class="' + (overdue ? "is-overdue" : "") + (expanded ? " is-expanded" : "") + '" data-row-id="' + t.id + '">' +
       '<td class="lote">' + escapeHtml(t.lote) + "</td>" +
       '<td class="producto-cell"><div class="producto">' + escapeHtml(t.producto) + '</div><div class="ensayo">' + escapeHtml(t.ensayo) + "</div>" + stepsProgressHtml(t) + "</td>" +
-      "<td>" + escapeHtml(t.analista) + "</td>" +
+      '<td class="analista-cell">' + escapeHtml(t.analista) + "</td>" +
       '<td class="priority-' + t.prioridad + '">' + PRIORIDADES[t.prioridad] + "</td>" +
       '<td class="fecha' + (overdue ? " overdue" : "") + '">' + formatDate(t.fecha) + "</td>" +
-      '<td><span class="chip ' + estadoInfo.chip + '">' + estadoInfo.label + "</span>" +
+      '<td class="estado-cell"><span class="chip ' + estadoInfo.chip + '">' + estadoInfo.label + "</span>" +
         (t.bloqueada ? '<div class="blocked-note">⏸ ' + escapeHtml(t.bloqueadaPor || "Bloqueada") + "</div>" : "") +
       "</td>" +
-      '<td><div class="row-actions">' +
+      '<td class="actions-cell"><div class="row-actions">' +
         '<button type="button" class="btn-ghost" data-action="edit" data-id="' + t.id + '" title="Editar" aria-label="Editar tarea">✎</button>' +
         '<button type="button" class="' + (armed ? "btn-danger-armed" : "btn-danger-ghost") + '" data-action="delete" data-id="' + t.id + '" title="' + (armed ? "Confirmar eliminación" : "Eliminar") + '" aria-label="' + (armed ? "Confirmar eliminación, tocá de nuevo" : "Eliminar tarea") + '">' + (armed ? "¿Eliminar?" : "✕") + "</button>" +
       "</div></td>" +
