@@ -101,6 +101,7 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; padding: 0; }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body {
@@ -512,6 +513,31 @@
   }
   textarea { resize: vertical; min-height: 56px; font-family: var(--font-ui); }
 
+  .ensayo-checks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 12px;
+    margin-top: 4px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+  }
+  .ensayo-check-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 2px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .ensayo-check-row input { width: auto; flex: 0 0 auto; }
+  .ensayo-check-row.is-master {
+    grid-column: 1 / -1;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+
   .steps-field-head {
     display: flex;
     align-items: center;
@@ -692,7 +718,7 @@
         <label for="m-producto">Producto</label>
         <input type="text" id="m-producto" required placeholder="p. ej. Amoxicilina 500 mg" />
       </div>
-      <div class="field">
+      <div class="field" id="ensayo-single-wrap">
         <label for="m-ensayo">Tipo de ensayo</label>
         <select id="m-ensayo">
           <option>Valoración</option>
@@ -705,6 +731,11 @@
           <option>Estabilidad</option>
           <option>Otro</option>
         </select>
+      </div>
+      <div class="field full" id="ensayo-multi-wrap" hidden>
+        <label>Tipo(s) de ensayo</label>
+        <div id="ensayo-checks" class="ensayo-checks"></div>
+        <div id="ensayo-multi-hint" class="steps-empty-hint" hidden></div>
       </div>
       <div class="field">
         <label for="m-analista">Analista asignado</label>
@@ -740,7 +771,7 @@
         <label for="m-bloqueada-por">Esperando…</label>
         <input type="text" id="m-bloqueada-por" placeholder="p. ej. reactivo de referencia, resultado de L-24065, equipo HPLC-2" />
       </div>
-      <div class="field full">
+      <div class="field full" id="steps-field-wrap">
         <div class="steps-field-head">
           <label style="margin:0;">Pasos del ensayo</label>
           <button type="button" id="btn-load-steps" class="btn-ghost">Cargar pasos sugeridos</button>
@@ -808,6 +839,11 @@
       return { texto: texto, hecho: false };
     });
   }
+
+  var ENSAYO_TYPES = [
+    "Valoración", "Disolución", "Identificación", "Sustancias relacionadas",
+    "Uniformidad de contenido", "Microbiológico", "Agua / Residual", "Estabilidad", "Otro"
+  ];
 
   var seed = [
     { id: uid(), lote: "L-24089", producto: "Amoxicilina 500 mg", ensayo: "Disolución", analista: "M. Torres", prioridad: "alta", estado: "analisis", fecha: addDays(1), notas: "USP <711>, aparato 2.", triaged: true, bloqueada: false, bloqueadaPor: "",
@@ -1201,6 +1237,31 @@
     renderStepsEditor(currentSteps);
   });
 
+  (function initEnsayoChecks() {
+    var container = $("ensayo-checks");
+    var master = '<label class="ensayo-check-row is-master"><input type="checkbox" id="ensayo-check-all" /><span>Producto completo (todos los ensayos)</span></label>';
+    var items = ENSAYO_TYPES.map(function (name) {
+      return '<label class="ensayo-check-row"><input type="checkbox" class="ensayo-check-item" value="' + escapeHtml(name) + '" /><span>' + escapeHtml(name) + "</span></label>";
+    }).join("");
+    container.innerHTML = master + items;
+  })();
+
+  $("ensayo-checks").addEventListener("change", function (e) {
+    if (e.target.id === "ensayo-check-all") {
+      var checked = e.target.checked;
+      $("ensayo-checks").querySelectorAll(".ensayo-check-item").forEach(function (cb) { cb.checked = checked; });
+      return;
+    }
+    if (!e.target.classList.contains("ensayo-check-item")) return;
+    var items = $("ensayo-checks").querySelectorAll(".ensayo-check-item");
+    var checkedCount = 0;
+    items.forEach(function (cb) { if (cb.checked) checkedCount++; });
+    var master = $("ensayo-check-all");
+    master.checked = checkedCount === items.length;
+    master.indeterminate = checkedCount > 0 && checkedCount < items.length;
+    $("ensayo-multi-hint").hidden = true;
+  });
+
   function openModal(id) {
     form.reset();
     $("steps-hint").hidden = true;
@@ -1210,6 +1271,16 @@
     $("m-lote").value = t && t.lote !== "—" ? t.lote : "";
     $("m-producto").value = t ? t.producto : "";
     $("m-ensayo").value = t ? t.ensayo : "Valoración";
+    $("ensayo-single-wrap").hidden = !t;
+    $("ensayo-multi-wrap").hidden = !!t;
+    $("steps-field-wrap").hidden = !t;
+    $("ensayo-multi-hint").hidden = true;
+    if (!t) {
+      var allCb = $("ensayo-check-all");
+      allCb.checked = false;
+      allCb.indeterminate = false;
+      $("ensayo-checks").querySelectorAll(".ensayo-check-item").forEach(function (cb) { cb.checked = false; });
+    }
     $("m-analista").value = t && t.analista !== "(sin asignar)" ? t.analista : "";
     $("m-prioridad").value = t ? t.prioridad : "media";
     $("m-fecha").value = (t && t.fecha) ? t.fecha : todayStr();
@@ -1238,10 +1309,9 @@
     e.preventDefault();
     var id = $("m-id").value;
     var blocked = $("m-bloqueada").checked;
-    var data = {
+    var base = {
       lote: $("m-lote").value.trim(),
       producto: $("m-producto").value.trim(),
-      ensayo: $("m-ensayo").value,
       analista: $("m-analista").value.trim(),
       prioridad: $("m-prioridad").value,
       fecha: $("m-fecha").value,
@@ -1249,15 +1319,35 @@
       notas: $("m-notas").value.trim(),
       bloqueada: blocked,
       bloqueadaPor: blocked ? $("m-bloqueada-por").value.trim() : "",
-      triaged: true,
-      pasos: currentSteps.filter(function (s) { return s.texto.trim() !== ""; }).map(function (s) { return { texto: s.texto.trim(), hecho: s.hecho }; })
+      triaged: true
     };
-    if (id) {
+
+    if (!id) {
+      var ensayos = Array.prototype.map.call(
+        $("ensayo-checks").querySelectorAll(".ensayo-check-item:checked"),
+        function (cb) { return cb.value; }
+      );
+      if (!ensayos.length) {
+        var hint = $("ensayo-multi-hint");
+        hint.textContent = "Elegí al menos un tipo de ensayo.";
+        hint.hidden = false;
+        return;
+      }
+      ensayos.forEach(function (ensayo) {
+        var data = Object.assign({}, base, {
+          id: uid(),
+          ensayo: ensayo,
+          pasos: buildStepsTemplate(ensayo) || []
+        });
+        tasks.push(data);
+      });
+    } else {
+      var data = Object.assign({}, base, {
+        ensayo: $("m-ensayo").value,
+        pasos: currentSteps.filter(function (s) { return s.texto.trim() !== ""; }).map(function (s) { return { texto: s.texto.trim(), hecho: s.hecho }; })
+      });
       var existing = tasks.find(function (x) { return x.id === id; });
       Object.assign(existing, data);
-    } else {
-      data.id = uid();
-      tasks.push(data);
     }
     save();
     closeModal();
