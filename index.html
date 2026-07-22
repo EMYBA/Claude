@@ -372,9 +372,34 @@
     font-size: 0.87rem;
   }
   tbody tr:last-child td { border-bottom: none; }
+  tbody tr[data-row-id] { cursor: pointer; }
   tbody tr:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
   tbody tr.is-overdue { background: color-mix(in srgb, var(--critical-soft) 55%, transparent); }
   tbody tr.is-overdue:hover { background: color-mix(in srgb, var(--critical-soft) 75%, transparent); }
+  tbody tr.is-expanded { background: color-mix(in srgb, var(--accent-soft) 35%, transparent); }
+
+  .steps-detail-row td {
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--accent-soft) 25%, var(--surface));
+    cursor: default;
+  }
+  .steps-detail {
+    padding: 6px 14px 14px 14px;
+    display: flex;
+    flex-direction: column;
+  }
+  .detail-step-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 2px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .detail-step-check { width: auto; flex: 0 0 auto; }
+  .detail-step-text { flex: 1 1 auto; }
+  .detail-step-row:has(.detail-step-check:checked) .detail-step-text { text-decoration: line-through; color: var(--ink-soft); }
 
   .lote {
     font-family: var(--font-mono);
@@ -903,11 +928,27 @@
     return '<div class="steps-progress-wrap"><div class="steps-progress"><div class="steps-progress-bar" style="width:' + pct + '%;"></div></div><div class="steps-progress-label">' + done + "/" + total + " pasos</div></div>";
   }
 
+  function buildDetailRowHtml(t) {
+    var inner;
+    if (!t.pasos || !t.pasos.length) {
+      inner = '<div class="steps-empty-hint">Sin pasos cargados. Agregalos con ✎.</div>';
+    } else {
+      inner = t.pasos.map(function (s, i) {
+        return '<label class="detail-step-row">' +
+          '<input type="checkbox" class="detail-step-check" data-task-id="' + t.id + '" data-step-index="' + i + '"' + (s.hecho ? " checked" : "") + ' />' +
+          '<span class="detail-step-text">' + escapeHtml(s.texto) + "</span>" +
+        "</label>";
+      }).join("");
+    }
+    return '<tr class="steps-detail-row" data-detail-for="' + t.id + '"><td colspan="7"><div class="steps-detail">' + inner + "</div></td></tr>";
+  }
+
   function buildRowHtml(t) {
     var overdue = isOverdue(t);
     var estadoInfo = ESTADOS[t.estado];
     var armed = t.id === pendingDeleteId;
-    return '<tr class="' + (overdue ? "is-overdue" : "") + '">' +
+    var expanded = !!expandedIds[t.id];
+    var mainRow = '<tr class="' + (overdue ? "is-overdue" : "") + (expanded ? " is-expanded" : "") + '" data-row-id="' + t.id + '">' +
       '<td class="lote">' + escapeHtml(t.lote) + "</td>" +
       '<td class="producto-cell"><div class="producto">' + escapeHtml(t.producto) + '</div><div class="ensayo">' + escapeHtml(t.ensayo) + "</div>" + stepsProgressHtml(t) + "</td>" +
       "<td>" + escapeHtml(t.analista) + "</td>" +
@@ -921,6 +962,7 @@
         '<button type="button" class="' + (armed ? "btn-danger-armed" : "btn-danger-ghost") + '" data-action="delete" data-id="' + t.id + '" title="' + (armed ? "Confirmar eliminación" : "Eliminar") + '" aria-label="' + (armed ? "Confirmar eliminación, tocá de nuevo" : "Eliminar tarea") + '">' + (armed ? "¿Eliminar?" : "✕") + "</button>" +
       "</div></td>" +
     "</tr>";
+    return expanded ? mainRow + buildDetailRowHtml(t) : mainRow;
   }
 
   function buildBucketHtml(def, list) {
@@ -966,6 +1008,53 @@
 
   var pendingDeleteId = null;
   var pendingDeleteTimer = null;
+  var expandedIds = {};
+
+  function updateRowProgress(taskId) {
+    var t = tasks.find(function (x) { return x.id === taskId; });
+    if (!t) return;
+    var mainRow = bucketsEl.querySelector('tr[data-row-id="' + taskId + '"]');
+    if (!mainRow) return;
+    var cell = mainRow.querySelector(".producto-cell");
+    var existingWrap = cell.querySelector(".steps-progress-wrap");
+    var html = stepsProgressHtml(t);
+    if (existingWrap) {
+      if (html) existingWrap.outerHTML = html;
+      else existingWrap.remove();
+    } else if (html) {
+      cell.insertAdjacentHTML("beforeend", html);
+    }
+  }
+
+  function toggleRowExpansion(id) {
+    var t = tasks.find(function (x) { return x.id === id; });
+    if (!t) return;
+    var mainRow = bucketsEl.querySelector('tr[data-row-id="' + id + '"]');
+    if (!mainRow) return;
+    var next = mainRow.nextElementSibling;
+    var isOpen = next && next.classList.contains("steps-detail-row") && next.getAttribute("data-detail-for") === id;
+    if (isOpen) {
+      next.remove();
+      delete expandedIds[id];
+      mainRow.classList.remove("is-expanded");
+    } else {
+      mainRow.insertAdjacentHTML("afterend", buildDetailRowHtml(t));
+      expandedIds[id] = true;
+      mainRow.classList.add("is-expanded");
+    }
+  }
+
+  bucketsEl.addEventListener("change", function (e) {
+    var cb = e.target.closest(".detail-step-check");
+    if (!cb) return;
+    var taskId = cb.getAttribute("data-task-id");
+    var stepIndex = Number(cb.getAttribute("data-step-index"));
+    var t = tasks.find(function (x) { return x.id === taskId; });
+    if (!t || !t.pasos || !t.pasos[stepIndex]) return;
+    t.pasos[stepIndex].hecho = cb.checked;
+    save();
+    updateRowProgress(taskId);
+  });
 
   function armDeleteButton(btn) {
     btn.className = "btn-danger-armed";
@@ -984,7 +1073,11 @@
 
   bucketsEl.addEventListener("click", function (e) {
     var btn = e.target.closest("button[data-action]");
-    if (!btn) return;
+    if (!btn) {
+      var row = e.target.closest("tr[data-row-id]");
+      if (row) toggleRowExpansion(row.getAttribute("data-row-id"));
+      return;
+    }
     var id = btn.getAttribute("data-id");
     if (btn.getAttribute("data-action") === "edit") openModal(id);
     else if (btn.getAttribute("data-action") === "delete") {
@@ -1002,6 +1095,7 @@
       }
       clearTimeout(pendingDeleteTimer);
       pendingDeleteId = null;
+      delete expandedIds[id];
       tasks = tasks.filter(function (x) { return x.id !== id; });
       save();
       render();
