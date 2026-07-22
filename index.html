@@ -726,15 +726,19 @@
           <option>Identificación</option>
           <option>Sustancias relacionadas</option>
           <option>Uniformidad de contenido</option>
-          <option>Microbiológico</option>
-          <option>Agua / Residual</option>
-          <option>Estabilidad</option>
           <option>Otro</option>
         </select>
+      </div>
+      <div class="field full" id="m-ensayo-otro-wrap" hidden>
+        <label for="m-ensayo-otro">Especificá qué ensayo es</label>
+        <input type="text" id="m-ensayo-otro" placeholder="p. ej. Contaminación cruzada" />
       </div>
       <div class="field full" id="ensayo-multi-wrap" hidden>
         <label>Tipo(s) de ensayo</label>
         <div id="ensayo-checks" class="ensayo-checks"></div>
+        <div class="field full" id="ensayo-otro-multi-wrap" hidden>
+          <input type="text" id="ensayo-otro-multi" placeholder="Especificá qué ensayo es…" />
+        </div>
         <div id="ensayo-multi-hint" class="steps-empty-hint" hidden></div>
       </div>
       <div class="field">
@@ -842,7 +846,7 @@
 
   var ENSAYO_TYPES = [
     "Valoración", "Disolución", "Identificación", "Sustancias relacionadas",
-    "Uniformidad de contenido", "Microbiológico", "Agua / Residual", "Estabilidad", "Otro"
+    "Uniformidad de contenido", "Otro"
   ];
 
   var seed = [
@@ -1250,6 +1254,7 @@
     if (e.target.id === "ensayo-check-all") {
       var checked = e.target.checked;
       $("ensayo-checks").querySelectorAll(".ensayo-check-item").forEach(function (cb) { cb.checked = checked; });
+      $("ensayo-otro-multi-wrap").hidden = !checked;
       return;
     }
     if (!e.target.classList.contains("ensayo-check-item")) return;
@@ -1260,6 +1265,11 @@
     master.checked = checkedCount === items.length;
     master.indeterminate = checkedCount > 0 && checkedCount < items.length;
     $("ensayo-multi-hint").hidden = true;
+    if (e.target.value === "Otro") $("ensayo-otro-multi-wrap").hidden = !e.target.checked;
+  });
+
+  $("m-ensayo").addEventListener("change", function () {
+    $("m-ensayo-otro-wrap").hidden = this.value !== "Otro";
   });
 
   function openModal(id) {
@@ -1270,16 +1280,29 @@
     $("m-id").value = t ? t.id : "";
     $("m-lote").value = t && t.lote !== "—" ? t.lote : "";
     $("m-producto").value = t ? t.producto : "";
-    $("m-ensayo").value = t ? t.ensayo : "Valoración";
     $("ensayo-single-wrap").hidden = !t;
     $("ensayo-multi-wrap").hidden = !!t;
     $("steps-field-wrap").hidden = !t;
     $("ensayo-multi-hint").hidden = true;
+    $("ensayo-otro-multi-wrap").hidden = true;
+    $("ensayo-otro-multi").value = "";
+    $("m-ensayo-otro-wrap").hidden = true;
+    $("m-ensayo-otro").value = "";
     if (!t) {
+      $("m-ensayo").value = "Valoración";
       var allCb = $("ensayo-check-all");
       allCb.checked = false;
       allCb.indeterminate = false;
       $("ensayo-checks").querySelectorAll(".ensayo-check-item").forEach(function (cb) { cb.checked = false; });
+    } else {
+      var isKnown = ENSAYO_TYPES.indexOf(t.ensayo) !== -1 && t.ensayo !== "Otro";
+      if (isKnown) {
+        $("m-ensayo").value = t.ensayo;
+      } else {
+        $("m-ensayo").value = "Otro";
+        $("m-ensayo-otro-wrap").hidden = false;
+        $("m-ensayo-otro").value = t.ensayo === "Otro" ? "" : t.ensayo;
+      }
     }
     $("m-analista").value = t && t.analista !== "(sin asignar)" ? t.analista : "";
     $("m-prioridad").value = t ? t.prioridad : "media";
@@ -1333,17 +1356,22 @@
         hint.hidden = false;
         return;
       }
+      var otroTextMulti = $("ensayo-otro-multi").value.trim();
       ensayos.forEach(function (ensayo) {
+        var finalEnsayo = (ensayo === "Otro" && otroTextMulti) ? otroTextMulti : ensayo;
         var data = Object.assign({}, base, {
           id: uid(),
-          ensayo: ensayo,
-          pasos: buildStepsTemplate(ensayo) || []
+          ensayo: finalEnsayo,
+          pasos: buildStepsTemplate(finalEnsayo) || []
         });
         tasks.push(data);
       });
     } else {
+      var selectedEnsayo = $("m-ensayo").value;
+      var otroText = $("m-ensayo-otro").value.trim();
+      var finalEnsayoEdit = (selectedEnsayo === "Otro" && otroText) ? otroText : selectedEnsayo;
       var data = Object.assign({}, base, {
-        ensayo: $("m-ensayo").value,
+        ensayo: finalEnsayoEdit,
         pasos: currentSteps.filter(function (s) { return s.texto.trim() !== ""; }).map(function (s) { return { texto: s.texto.trim(), hecho: s.hecho }; })
       });
       var existing = tasks.find(function (x) { return x.id === id; });
