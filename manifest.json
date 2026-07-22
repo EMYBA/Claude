@@ -1,0 +1,16 @@
+{
+  "name": "Tareas — Laboratorio de Calidad",
+  "short_name": "QC Lab",
+  "description": "Gestión de tareas para un laboratorio de control de calidad farmacéutico.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f4ef",
+  "theme_color": "#1e6e62",
+  "lang": "es",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

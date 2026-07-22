@@ -4,6 +4,14 @@
 <meta charset="UTF-8" />
 <title>Control de Tareas — Laboratorio de Calidad</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<link rel="icon" href="icons/icon-192.png" type="image/png" />
+<meta name="theme-color" content="#1e6e62" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="QC Lab" />
 <style>
   :root {
     --bg: #f2f4ef;
@@ -1098,6 +1106,13 @@
 
   render();
 })();
+</script>
+<script>
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("service-worker.js").catch(function () {});
+    });
+  }
 </script>
 </body>
 </html>
