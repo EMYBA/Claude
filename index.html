@@ -283,6 +283,15 @@
     color: var(--critical);
     padding: 6px 8px;
   }
+  .btn-danger-armed {
+    background: var(--critical);
+    border-color: var(--critical);
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.72rem;
+    padding: 5px 9px;
+    white-space: nowrap;
+  }
 
   /* ---------- Urgency buckets ---------- */
   .buckets {
@@ -672,6 +681,7 @@
           <button type="button" id="btn-load-steps" class="btn-ghost">Cargar pasos sugeridos</button>
         </div>
         <div id="steps-list"></div>
+        <div id="steps-hint" class="steps-empty-hint" hidden></div>
         <button type="button" id="btn-add-step" class="btn-ghost">+ agregar paso</button>
       </div>
       <div class="field full">
@@ -896,6 +906,7 @@
   function buildRowHtml(t) {
     var overdue = isOverdue(t);
     var estadoInfo = ESTADOS[t.estado];
+    var armed = t.id === pendingDeleteId;
     return '<tr class="' + (overdue ? "is-overdue" : "") + '">' +
       '<td class="lote">' + escapeHtml(t.lote) + "</td>" +
       '<td class="producto-cell"><div class="producto">' + escapeHtml(t.producto) + '</div><div class="ensayo">' + escapeHtml(t.ensayo) + "</div>" + stepsProgressHtml(t) + "</td>" +
@@ -907,7 +918,7 @@
       "</td>" +
       '<td><div class="row-actions">' +
         '<button type="button" class="btn-ghost" data-action="edit" data-id="' + t.id + '" title="Editar" aria-label="Editar tarea">✎</button>' +
-        '<button type="button" class="btn-danger-ghost" data-action="delete" data-id="' + t.id + '" title="Eliminar" aria-label="Eliminar tarea">✕</button>' +
+        '<button type="button" class="' + (armed ? "btn-danger-armed" : "btn-danger-ghost") + '" data-action="delete" data-id="' + t.id + '" title="' + (armed ? "Confirmar eliminación" : "Eliminar") + '" aria-label="' + (armed ? "Confirmar eliminación, tocá de nuevo" : "Eliminar tarea") + '">' + (armed ? "¿Eliminar?" : "✕") + "</button>" +
       "</div></td>" +
     "</tr>";
   }
@@ -953,6 +964,9 @@
     el.addEventListener("input", render);
   });
 
+  var pendingDeleteId = null;
+  var pendingDeleteTimer = null;
+
   bucketsEl.addEventListener("click", function (e) {
     var btn = e.target.closest("button[data-action]");
     if (!btn) return;
@@ -960,10 +974,19 @@
     if (btn.getAttribute("data-action") === "edit") openModal(id);
     else if (btn.getAttribute("data-action") === "delete") {
       var t = tasks.find(function (x) { return x.id === id; });
-      if (t && confirm('Eliminar la tarea del lote "' + t.lote + '"?')) {
-        tasks = tasks.filter(function (x) { return x.id !== id; });
-        save(); render();
+      if (!t) return;
+      if (pendingDeleteId !== id) {
+        pendingDeleteId = id;
+        clearTimeout(pendingDeleteTimer);
+        pendingDeleteTimer = setTimeout(function () { pendingDeleteId = null; render(); }, 3000);
+        render();
+        return;
       }
+      clearTimeout(pendingDeleteTimer);
+      pendingDeleteId = null;
+      tasks = tasks.filter(function (x) { return x.id !== id; });
+      save();
+      render();
     }
   });
 
@@ -1007,18 +1030,28 @@
     var inputs = $("steps-list").querySelectorAll(".step-text");
     if (inputs.length) inputs[inputs.length - 1].focus();
   });
+  var stepsHintTimer = null;
+  function showStepsHint(text) {
+    var hint = $("steps-hint");
+    hint.textContent = text;
+    hint.hidden = false;
+    clearTimeout(stepsHintTimer);
+    stepsHintTimer = setTimeout(function () { hint.hidden = true; }, 5000);
+  }
   $("btn-load-steps").addEventListener("click", function () {
     var tpl = buildStepsTemplate($("m-ensayo").value);
     if (!tpl) {
-      alert('Todavía no hay pasos sugeridos para "' + $("m-ensayo").value + '". Podés agregarlos manualmente con "+ agregar paso".');
+      showStepsHint('Todavía no hay pasos sugeridos para "' + $("m-ensayo").value + '". Podés agregarlos manualmente con "+ agregar paso".');
       return;
     }
+    $("steps-hint").hidden = true;
     currentSteps = tpl;
     renderStepsEditor(currentSteps);
   });
 
   function openModal(id) {
     form.reset();
+    $("steps-hint").hidden = true;
     var t = id ? tasks.find(function (x) { return x.id === id; }) : null;
     modalTitle.textContent = t ? "Editar tarea" : "Nueva tarea";
     $("m-id").value = t ? t.id : "";
