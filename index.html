@@ -369,6 +369,11 @@
   .fecha { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .fecha.overdue { color: var(--critical); font-weight: 600; }
 
+  .steps-progress-wrap { margin-top: 6px; display: flex; align-items: center; gap: 6px; }
+  .steps-progress { height: 4px; width: 90px; background: var(--border); border-radius: 999px; overflow: hidden; flex: 0 0 auto; }
+  .steps-progress-bar { height: 100%; background: var(--accent); }
+  .steps-progress-label { font-size: 0.68rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
   .blocked-note {
     margin-top: 4px;
     display: flex;
@@ -442,6 +447,8 @@
     box-shadow: var(--shadow);
     width: 100%;
     max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
     padding: 22px;
     display: flex;
     flex-direction: column;
@@ -465,6 +472,37 @@
     margin-top: 6px;
   }
   textarea { resize: vertical; min-height: 56px; font-family: var(--font-ui); }
+
+  .steps-field-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .steps-field-head button { font-size: 0.72rem; padding: 3px 8px; }
+  #steps-list { display: flex; flex-direction: column; margin-top: 4px; }
+  .step-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .step-row:last-child { border-bottom: none; }
+  .step-check { width: auto; flex: 0 0 auto; }
+  .step-text {
+    flex: 1 1 auto;
+    border: none;
+    background: transparent;
+    padding: 4px 2px;
+    font-size: 0.85rem;
+    border-radius: 4px;
+  }
+  .step-row:has(.step-check:checked) .step-text { text-decoration: line-through; color: var(--ink-soft); }
+  .step-remove { flex: 0 0 auto; padding: 2px 6px; font-size: 0.75rem; color: var(--ink-soft); border-color: transparent; }
+  .step-remove:hover { color: var(--critical); }
+  #btn-add-step { align-self: flex-start; font-size: 0.78rem; padding: 4px 8px; margin-top: 6px; }
+  .steps-empty-hint { font-size: 0.78rem; color: var(--ink-soft); padding: 6px 0; }
 
   .sr-only {
     position: absolute;
@@ -621,6 +659,14 @@
         <input type="text" id="m-bloqueada-por" placeholder="p. ej. reactivo de referencia, resultado de L-24065, equipo HPLC-2" />
       </div>
       <div class="field full">
+        <div class="steps-field-head">
+          <label style="margin:0;">Pasos del ensayo</label>
+          <button type="button" id="btn-load-steps" class="btn-ghost">Cargar pasos sugeridos</button>
+        </div>
+        <div id="steps-list"></div>
+        <button type="button" id="btn-add-step" class="btn-ghost">+ agregar paso</button>
+      </div>
+      <div class="field full">
         <label for="m-notas">Notas</label>
         <textarea id="m-notas" placeholder="Observaciones, método, referencia de protocolo…"></textarea>
       </div>
@@ -646,13 +692,48 @@
   };
   var PRIORIDADES = { alta: "Alta", media: "Media", baja: "Baja" };
 
+  var PREP_STEPS = [
+    "Recolección de materiales",
+    "Búsqueda de solventes / carga de agua",
+    "Búsqueda de estándar/es, muestra/s y CR's",
+    "Pesaje de muestras",
+    "Pesaje de estándares",
+    "Búsqueda y pesaje del placebo",
+    "Preparación o dilución de adecuación",
+    "Preparación de la fase móvil",
+    "Preparación o disponibilidad de los equipos"
+  ];
+  var DATA_STEP = "Pasaje de datos — generación de planillas de Excel";
+  var CLOSING_STEPS = [
+    "Revisión completa de los datos",
+    "Pasaje de datos a planilla de FC",
+    "Pasaje a OQSAFE de planillas",
+    "Generación de planillas de apertura y cierre de análisis",
+    "Generación y pasaje a PDF de planillas",
+    "Pegado de tickets y planillas en el cuaderno"
+  ];
+  var ENSAYO_FINAL_STEPS = {
+    "Disolución": ["Adecuación del sistema", "Cromatogramas"],
+    "Valoración": ["Cromatogramas", "Impresión"],
+    "Uniformidad de contenido": ["Impresión"],
+    "Sustancias relacionadas": ["Planilla"]
+  };
+  function buildStepsTemplate(ensayo) {
+    var final = ENSAYO_FINAL_STEPS[ensayo];
+    if (!final) return null;
+    return PREP_STEPS.concat([DATA_STEP]).concat(final).concat(CLOSING_STEPS).map(function (texto) {
+      return { texto: texto, hecho: false };
+    });
+  }
+
   var seed = [
-    { id: uid(), lote: "L-24089", producto: "Amoxicilina 500 mg", ensayo: "Disolución", analista: "M. Torres", prioridad: "alta", estado: "analisis", fecha: addDays(1), notas: "USP <711>, aparato 2.", triaged: true, bloqueada: false, bloqueadaPor: "" },
-    { id: uid(), lote: "L-24091", producto: "Ibuprofeno 400 mg", ensayo: "Valoración", analista: "R. Gómez", prioridad: "media", estado: "pendiente", fecha: addDays(3), notas: "", triaged: true, bloqueada: true, bloqueadaPor: "reactivo de referencia (pedido a compras)" },
-    { id: uid(), lote: "L-24077", producto: "Paracetamol 1g", ensayo: "Sustancias relacionadas", analista: "M. Torres", prioridad: "alta", estado: "rechazado", fecha: addDays(-2), notas: "Resultado fuera de especificación, en investigación.", triaged: true, bloqueada: false, bloqueadaPor: "" },
-    { id: uid(), lote: "L-24102", producto: "Omeprazol 20 mg", ensayo: "Microbiológico", analista: "C. Duarte", prioridad: "baja", estado: "revision", fecha: addDays(5), notas: "", triaged: true, bloqueada: false, bloqueadaPor: "" },
-    { id: uid(), lote: "L-24065", producto: "Metformina 850 mg", ensayo: "Uniformidad de contenido", analista: "R. Gómez", prioridad: "media", estado: "aprobado", fecha: addDays(-6), notas: "Liberado, ver COA-24065.", triaged: true, bloqueada: false, bloqueadaPor: "" },
-    { id: uid(), lote: "—", producto: "Che, revisar si el HPLC-1 quedó calibrado después del mantenimiento", ensayo: "Otro", analista: "(sin asignar)", prioridad: "media", estado: "pendiente", fecha: null, notas: "", triaged: false, bloqueada: false, bloqueadaPor: "" }
+    { id: uid(), lote: "L-24089", producto: "Amoxicilina 500 mg", ensayo: "Disolución", analista: "M. Torres", prioridad: "alta", estado: "analisis", fecha: addDays(1), notas: "USP <711>, aparato 2.", triaged: true, bloqueada: false, bloqueadaPor: "",
+      pasos: buildStepsTemplate("Disolución").map(function (p, i) { return { texto: p.texto, hecho: i < 5 }; }) },
+    { id: uid(), lote: "L-24091", producto: "Ibuprofeno 400 mg", ensayo: "Valoración", analista: "R. Gómez", prioridad: "media", estado: "pendiente", fecha: addDays(3), notas: "", triaged: true, bloqueada: true, bloqueadaPor: "reactivo de referencia (pedido a compras)", pasos: [] },
+    { id: uid(), lote: "L-24077", producto: "Paracetamol 1g", ensayo: "Sustancias relacionadas", analista: "M. Torres", prioridad: "alta", estado: "rechazado", fecha: addDays(-2), notas: "Resultado fuera de especificación, en investigación.", triaged: true, bloqueada: false, bloqueadaPor: "", pasos: [] },
+    { id: uid(), lote: "L-24102", producto: "Omeprazol 20 mg", ensayo: "Microbiológico", analista: "C. Duarte", prioridad: "baja", estado: "revision", fecha: addDays(5), notas: "", triaged: true, bloqueada: false, bloqueadaPor: "", pasos: [] },
+    { id: uid(), lote: "L-24065", producto: "Metformina 850 mg", ensayo: "Uniformidad de contenido", analista: "R. Gómez", prioridad: "media", estado: "aprobado", fecha: addDays(-6), notas: "Liberado, ver COA-24065.", triaged: true, bloqueada: false, bloqueadaPor: "", pasos: [] },
+    { id: uid(), lote: "—", producto: "Che, revisar si el HPLC-1 quedó calibrado después del mantenimiento", ensayo: "Otro", analista: "(sin asignar)", prioridad: "media", estado: "pendiente", fecha: null, notas: "", triaged: false, bloqueada: false, bloqueadaPor: "", pasos: [] }
   ];
 
   function uid() { return "t" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
@@ -796,12 +877,20 @@
     return groups;
   }
 
+  function stepsProgressHtml(t) {
+    if (!t.pasos || !t.pasos.length) return "";
+    var done = t.pasos.filter(function (s) { return s.hecho; }).length;
+    var total = t.pasos.length;
+    var pct = Math.round((done / total) * 100);
+    return '<div class="steps-progress-wrap"><div class="steps-progress"><div class="steps-progress-bar" style="width:' + pct + '%;"></div></div><div class="steps-progress-label">' + done + "/" + total + " pasos</div></div>";
+  }
+
   function buildRowHtml(t) {
     var overdue = isOverdue(t);
     var estadoInfo = ESTADOS[t.estado];
     return '<tr class="' + (overdue ? "is-overdue" : "") + '">' +
       '<td class="lote">' + escapeHtml(t.lote) + "</td>" +
-      '<td class="producto-cell"><div class="producto">' + escapeHtml(t.producto) + '</div><div class="ensayo">' + escapeHtml(t.ensayo) + "</div></td>" +
+      '<td class="producto-cell"><div class="producto">' + escapeHtml(t.producto) + '</div><div class="ensayo">' + escapeHtml(t.ensayo) + "</div>" + stepsProgressHtml(t) + "</td>" +
       "<td>" + escapeHtml(t.analista) + "</td>" +
       '<td class="priority-' + t.prioridad + '">' + PRIORIDADES[t.prioridad] + "</td>" +
       '<td class="fecha' + (overdue ? " overdue" : "") + '">' + formatDate(t.fecha) + "</td>" +
@@ -870,6 +959,56 @@
     }
   });
 
+  var currentSteps = [];
+
+  function renderStepsEditor(steps) {
+    var list = $("steps-list");
+    if (!steps.length) {
+      list.innerHTML = '<div class="steps-empty-hint">Sin pasos cargados todavía.</div>';
+      return;
+    }
+    list.innerHTML = steps.map(function (s, i) {
+      return '<div class="step-row" data-index="' + i + '">' +
+        '<input type="checkbox" class="step-check"' + (s.hecho ? " checked" : "") + ' aria-label="Marcar paso hecho" />' +
+        '<input type="text" class="step-text" value="' + escapeHtml(s.texto) + '" placeholder="Describir el paso…" />' +
+        '<button type="button" class="btn-ghost step-remove" aria-label="Quitar paso">✕</button>' +
+      "</div>";
+    }).join("");
+  }
+
+  $("steps-list").addEventListener("change", function (e) {
+    if (!e.target.classList.contains("step-check")) return;
+    var i = Number(e.target.closest(".step-row").getAttribute("data-index"));
+    currentSteps[i].hecho = e.target.checked;
+  });
+  $("steps-list").addEventListener("input", function (e) {
+    if (!e.target.classList.contains("step-text")) return;
+    var i = Number(e.target.closest(".step-row").getAttribute("data-index"));
+    currentSteps[i].texto = e.target.value;
+  });
+  $("steps-list").addEventListener("click", function (e) {
+    var btn = e.target.closest(".step-remove");
+    if (!btn) return;
+    var i = Number(btn.closest(".step-row").getAttribute("data-index"));
+    currentSteps.splice(i, 1);
+    renderStepsEditor(currentSteps);
+  });
+  $("btn-add-step").addEventListener("click", function () {
+    currentSteps.push({ texto: "", hecho: false });
+    renderStepsEditor(currentSteps);
+    var inputs = $("steps-list").querySelectorAll(".step-text");
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
+  $("btn-load-steps").addEventListener("click", function () {
+    var tpl = buildStepsTemplate($("m-ensayo").value);
+    if (!tpl) {
+      alert('Todavía no hay pasos sugeridos para "' + $("m-ensayo").value + '". Podés agregarlos manualmente con "+ agregar paso".');
+      return;
+    }
+    currentSteps = tpl;
+    renderStepsEditor(currentSteps);
+  });
+
   function openModal(id) {
     form.reset();
     var t = id ? tasks.find(function (x) { return x.id === id; }) : null;
@@ -887,6 +1026,8 @@
     $("m-bloqueada").checked = blocked;
     $("m-bloqueada-por").value = t ? t.bloqueadaPor || "" : "";
     $("m-bloqueada-wrap").hidden = !blocked;
+    currentSteps = (t && Array.isArray(t.pasos)) ? t.pasos.map(function (s) { return { texto: s.texto, hecho: s.hecho }; }) : [];
+    renderStepsEditor(currentSteps);
     backdrop.hidden = false;
     $("m-lote").focus();
   }
@@ -915,7 +1056,8 @@
       notas: $("m-notas").value.trim(),
       bloqueada: blocked,
       bloqueadaPor: blocked ? $("m-bloqueada-por").value.trim() : "",
-      triaged: true
+      triaged: true,
+      pasos: currentSteps.filter(function (s) { return s.texto.trim() !== ""; }).map(function (s) { return { texto: s.texto.trim(), hecho: s.hecho }; })
     };
     if (id) {
       var existing = tasks.find(function (x) { return x.id === id; });
@@ -945,7 +1087,8 @@
       notas: "",
       triaged: false,
       bloqueada: false,
-      bloqueadaPor: ""
+      bloqueadaPor: "",
+      pasos: []
     });
     save();
     quickInput.value = "";
