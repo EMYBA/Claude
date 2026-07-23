@@ -609,7 +609,6 @@
       grid-template-areas:
         "producto estado"
         "lote     lote"
-        "analista analista"
         "prioridad fecha"
         "actions  actions";
       column-gap: 10px;
@@ -624,13 +623,11 @@
     td.producto-cell { grid-area: producto; }
     td.estado-cell { grid-area: estado; justify-self: end; text-align: right; }
     td.lote { grid-area: lote; }
-    td.analista-cell { grid-area: analista; }
     td.priority-alta, td.priority-media, td.priority-baja { grid-area: prioridad; }
     td.fecha { grid-area: fecha; justify-self: end; text-align: right; }
     td.actions-cell { grid-area: actions; }
 
     td.lote::before { content: "Lote "; color: var(--ink-soft); font-weight: 400; }
-    td.analista-cell::before { content: "Analista "; color: var(--ink-soft); font-weight: 400; }
     td.priority-alta::before, td.priority-media::before, td.priority-baja::before {
       content: "Prioridad "; color: var(--ink-soft); font-weight: 400;
     }
@@ -668,7 +665,7 @@
   <section class="toolbar" aria-label="Filtros">
     <div class="field" style="flex:1 1 220px;">
       <label for="f-search">Buscar</label>
-      <input type="search" id="f-search" placeholder="Lote, producto o analista…" />
+      <input type="search" id="f-search" placeholder="Lote o producto…" />
     </div>
     <div class="field">
       <label for="f-estado">Estado</label>
@@ -693,12 +690,6 @@
     <div class="field">
       <label for="f-ensayo">Tipo de ensayo</label>
       <select id="f-ensayo">
-        <option value="">Todos</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="f-analista">Analista</label>
-      <select id="f-analista">
         <option value="">Todos</option>
       </select>
     </div>
@@ -748,10 +739,6 @@
           <input type="text" id="ensayo-otro-multi" placeholder="Especificá qué ensayo es…" />
         </div>
         <div id="ensayo-multi-hint" class="steps-empty-hint" hidden></div>
-      </div>
-      <div class="field">
-        <label for="m-analista">Analista asignado</label>
-        <input type="text" id="m-analista" required placeholder="p. ej. M. Torres" />
       </div>
       <div class="field">
         <label for="m-prioridad">Prioridad</label>
@@ -858,13 +845,13 @@
   ];
 
   var seed = [
-    { id: uid(), lote: "L-24089", producto: "Amoxicilina 500 mg", ensayo: "Disolución", analista: "M. Torres", prioridad: "alta", estado: "analisis", fecha: addDays(1), notas: "USP <711>, aparato 2.", triaged: true, bloqueada: false, bloqueadaPor: "",
+    { id: uid(), lote: "L-24089", producto: "Amoxicilina 500 mg", ensayo: "Disolución", prioridad: "alta", estado: "analisis", fecha: addDays(1), notas: "USP <711>, aparato 2.", triaged: true, bloqueada: false, bloqueadaPor: "",
       pasos: buildStepsTemplate("Disolución").map(function (p, i) { return { texto: p.texto, hecho: i < 5 }; }) },
-    { id: uid(), lote: "L-24091", producto: "Ibuprofeno 400 mg", ensayo: "Valoración", analista: "R. Gómez", prioridad: "media", estado: "pendiente", fecha: addDays(3), notas: "", triaged: true, bloqueada: true, bloqueadaPor: "reactivo de referencia (pedido a compras)", pasos: [] },
-    { id: uid(), lote: "L-24077", producto: "Paracetamol 1g", ensayo: "Sustancias relacionadas", analista: "M. Torres", prioridad: "alta", estado: "rechazado", fecha: addDays(-2), notas: "Resultado fuera de especificación, en investigación.", triaged: true, bloqueada: false, bloqueadaPor: "", pasos: [] },
-    { id: uid(), lote: "L-24102", producto: "Omeprazol 20 mg", ensayo: "Microbiológico", analista: "C. Duarte", prioridad: "baja", estado: "revision", fecha: addDays(5), notas: "", triaged: true, bloqueada: false, bloqueadaPor: "", pasos: [] },
-    { id: uid(), lote: "L-24065", producto: "Metformina 850 mg", ensayo: "Uniformidad de contenido", analista: "R. Gómez", prioridad: "media", estado: "aprobado", fecha: addDays(-6), notas: "Liberado, ver COA-24065.", triaged: true, bloqueada: false, bloqueadaPor: "", pasos: [] },
-    { id: uid(), lote: "—", producto: "Che, revisar si el HPLC-1 quedó calibrado después del mantenimiento", ensayo: "Otro", analista: "(sin asignar)", prioridad: "media", estado: "pendiente", fecha: null, notas: "", triaged: false, bloqueada: false, bloqueadaPor: "", pasos: [] }
+    { id: uid(), lote: "L-24091", producto: "Ibuprofeno 400 mg", ensayo: "Valoración", prioridad: "media", estado: "pendiente", fecha: addDays(3), notas: "", triaged: true, bloqueada: true, bloqueadaPor: "reactivo de referencia (pedido a compras)", pasos: [] },
+    { id: uid(), lote: "L-24077", producto: "Paracetamol 1g", ensayo: "Sustancias relacionadas", prioridad: "alta", estado: "rechazado", fecha: addDays(-2), notas: "Resultado fuera de especificación, en investigación.", triaged: true, bloqueada: false, bloqueadaPor: "", pasos: [] },
+    { id: uid(), lote: "L-24102", producto: "Omeprazol 20 mg", ensayo: "Microbiológico", prioridad: "baja", estado: "revision", fecha: addDays(5), notas: "", triaged: true, bloqueada: false, bloqueadaPor: "", pasos: [] },
+    { id: uid(), lote: "L-24065", producto: "Metformina 850 mg", ensayo: "Uniformidad de contenido", prioridad: "media", estado: "aprobado", fecha: addDays(-6), notas: "Liberado, ver COA-24065.", triaged: true, bloqueada: false, bloqueadaPor: "", pasos: [] },
+    { id: uid(), lote: "—", producto: "Che, revisar si el HPLC-1 quedó calibrado después del mantenimiento", ensayo: "Otro", prioridad: "media", estado: "pendiente", fecha: null, notas: "", triaged: false, bloqueada: false, bloqueadaPor: "", pasos: [] }
   ];
 
   function uid() { return "t" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
@@ -900,7 +887,7 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var fSearch = $("f-search"), fEstado = $("f-estado"), fPrioridad = $("f-prioridad"),
-      fEnsayo = $("f-ensayo"), fAnalista = $("f-analista");
+      fEnsayo = $("f-ensayo");
   var bucketsEl = $("buckets"), emptyState = $("empty-state"), statsEl = $("stats");
   var backdrop = $("modal-backdrop"), form = $("task-form"), modalTitle = $("modal-title");
   var quickForm = $("quick-form"), quickInput = $("quick-input");
@@ -919,9 +906,7 @@
 
   function refreshFacetOptions() {
     var ensayos = uniqueSorted(tasks.map(function (t) { return t.ensayo; }));
-    var analistas = uniqueSorted(tasks.map(function (t) { return t.analista; }));
     fillSelect(fEnsayo, ensayos);
-    fillSelect(fAnalista, analistas);
   }
   function uniqueSorted(arr) {
     var seen = {}; var out = [];
@@ -976,9 +961,8 @@
       if (fEstado.value && t.estado !== fEstado.value) return false;
       if (fPrioridad.value && t.prioridad !== fPrioridad.value) return false;
       if (fEnsayo.value && t.ensayo !== fEnsayo.value) return false;
-      if (fAnalista.value && t.analista !== fAnalista.value) return false;
       if (q) {
-        var hay = (t.lote + " " + t.producto + " " + t.analista).toLowerCase();
+        var hay = (t.lote + " " + t.producto).toLowerCase();
         if (hay.indexOf(q) === -1) return false;
       }
       return true;
@@ -1028,7 +1012,7 @@
         "</label>";
       }).join("");
     }
-    return '<tr class="steps-detail-row" data-detail-for="' + t.id + '"><td colspan="7"><div class="steps-detail">' + inner + "</div></td></tr>";
+    return '<tr class="steps-detail-row" data-detail-for="' + t.id + '"><td colspan="6"><div class="steps-detail">' + inner + "</div></td></tr>";
   }
 
   function buildRowHtml(t) {
@@ -1039,7 +1023,6 @@
     var mainRow = '<tr class="' + (overdue ? "is-overdue" : "") + (expanded ? " is-expanded" : "") + '" data-row-id="' + t.id + '">' +
       '<td class="lote">' + escapeHtml(t.lote) + "</td>" +
       '<td class="producto-cell"><div class="producto">' + escapeHtml(t.producto) + '</div><div class="ensayo">' + escapeHtml(t.ensayo) + "</div>" + stepsProgressHtml(t) + "</td>" +
-      '<td class="analista-cell">' + escapeHtml(t.analista) + "</td>" +
       '<td class="priority-' + t.prioridad + '">' + PRIORIDADES[t.prioridad] + "</td>" +
       '<td class="fecha' + (overdue ? " overdue" : "") + '">' + formatDate(t.fecha) + "</td>" +
       '<td class="estado-cell"><span class="chip ' + estadoInfo.chip + '">' + estadoInfo.label + "</span>" +
@@ -1060,7 +1043,7 @@
     return '<details class="' + cls + '" data-bucket="' + def.key + '" style="--bucket-color:' + def.color + ';"' + (isOpen ? " open" : "") + ">" +
       '<summary><span class="bucket-name">' + def.label + '</span><span class="bucket-count">' + list.length + '</span><span class="bucket-hint">' + def.hint + "</span></summary>" +
       '<div class="table-wrap"><table><thead><tr>' +
-        "<th>Lote</th><th>Producto / Ensayo</th><th>Analista</th><th>Prioridad</th><th>Vence</th><th>Estado</th><th style=\"width:1%;\"></th>" +
+        "<th>Lote</th><th>Producto / Ensayo</th><th>Prioridad</th><th>Vence</th><th>Estado</th><th style=\"width:1%;\"></th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
     "</details>";
   }
@@ -1090,7 +1073,7 @@
     return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
   }
 
-  [fSearch, fEstado, fPrioridad, fEnsayo, fAnalista].forEach(function (el) {
+  [fSearch, fEstado, fPrioridad, fEnsayo].forEach(function (el) {
     el.addEventListener("input", render);
   });
 
@@ -1370,7 +1353,6 @@
         $("m-ensayo-otro").value = t.ensayo === "Otro" ? "" : t.ensayo;
       }
     }
-    $("m-analista").value = t && t.analista !== "(sin asignar)" ? t.analista : "";
     $("m-prioridad").value = t ? t.prioridad : "media";
     $("m-fecha").value = (t && t.fecha) ? t.fecha : todayStr();
     $("m-estado").value = t ? t.estado : "pendiente";
@@ -1401,7 +1383,6 @@
     var base = {
       lote: $("m-lote").value.trim(),
       producto: $("m-producto").value.trim(),
-      analista: $("m-analista").value.trim(),
       prioridad: $("m-prioridad").value,
       fecha: $("m-fecha").value,
       estado: $("m-estado").value,
@@ -1457,7 +1438,6 @@
       lote: "—",
       producto: text,
       ensayo: "Otro",
-      analista: "(sin asignar)",
       prioridad: "media",
       estado: "pendiente",
       fecha: null,
