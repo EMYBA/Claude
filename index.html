@@ -811,11 +811,15 @@
     "Búsqueda de estándar/es, muestra/s y CR's",
     "Pesaje de muestras",
     "Pesaje de estándares",
+    "Resumen y cálculo de cantidades",
     "Búsqueda y pesaje del placebo",
     "Preparación o dilución de adecuación",
     "Preparación de la fase móvil",
     "Preparación o disponibilidad de los equipos"
   ];
+  var ENSAYO_PREP_EXTRA_STEPS = {
+    "Disolución": ["Preparación del medio de disolución"]
+  };
   var DATA_STEP = "Pasaje de datos — generación de planillas de Excel";
   var CLOSING_STEPS = [
     "Revisión completa de los datos",
@@ -834,7 +838,8 @@
   function buildStepsTemplate(ensayo) {
     var final = ENSAYO_FINAL_STEPS[ensayo];
     if (!final) return null;
-    return PREP_STEPS.concat([DATA_STEP]).concat(final).concat(CLOSING_STEPS).map(function (texto) {
+    var prep = PREP_STEPS.concat(ENSAYO_PREP_EXTRA_STEPS[ensayo] || []);
+    return prep.concat([DATA_STEP]).concat(final).concat(CLOSING_STEPS).map(function (texto) {
       return { texto: texto, hecho: false };
     });
   }
