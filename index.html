@@ -398,6 +398,12 @@
   .detail-step-check { width: auto; flex: 0 0 auto; }
   .detail-step-text { flex: 1 1 auto; font-size: 0.87rem; font-weight: 600; }
   .detail-step-row:has(.detail-step-check:checked) .detail-step-text { text-decoration: line-through; color: var(--ink-soft); }
+  .detail-step-row.is-confirming {
+    background: color-mix(in srgb, var(--accent-soft) 65%, transparent);
+    border-radius: 6px;
+  }
+  .detail-step-row.is-confirming .detail-step-check { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  .confirm-hint { font-size: 0.68rem; color: var(--accent); font-weight: 600; white-space: nowrap; flex: 0 0 auto; }
 
   .lote {
     font-family: var(--font-mono);
@@ -565,6 +571,8 @@
     border-radius: 4px;
   }
   .step-row:has(.step-check:checked) .step-text { text-decoration: line-through; color: var(--ink-soft); }
+  .step-row.is-confirming { background: color-mix(in srgb, var(--accent-soft) 65%, transparent); border-radius: 6px; }
+  .step-row.is-confirming .step-check { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
   .step-remove { flex: 0 0 auto; padding: 2px 6px; font-size: 0.75rem; color: var(--ink-soft); border-color: transparent; }
   .step-remove:hover { color: var(--critical); }
   #btn-add-step { align-self: flex-start; font-size: 0.78rem; padding: 4px 8px; margin-top: 6px; }
@@ -1124,14 +1132,43 @@
     }
   }
 
-  bucketsEl.addEventListener("change", function (e) {
+  var pendingStepConfirm = null;
+  var pendingStepConfirmTimer = null;
+  function clearStepConfirmVisual() {
+    var row = bucketsEl.querySelector(".detail-step-row.is-confirming");
+    if (!row) return;
+    row.classList.remove("is-confirming");
+    var hint = row.querySelector(".confirm-hint");
+    if (hint) hint.remove();
+  }
+
+  bucketsEl.addEventListener("click", function (e) {
     var cb = e.target.closest(".detail-step-check");
     if (!cb) return;
     var taskId = cb.getAttribute("data-task-id");
-    var stepIndex = Number(cb.getAttribute("data-step-index"));
+    var stepIndex = cb.getAttribute("data-step-index");
+    var row = cb.closest(".detail-step-row");
+    var isArmed = pendingStepConfirm && pendingStepConfirm.taskId === taskId && pendingStepConfirm.stepIndex === stepIndex;
+    if (!isArmed) {
+      e.preventDefault();
+      clearStepConfirmVisual();
+      clearTimeout(pendingStepConfirmTimer);
+      pendingStepConfirm = { taskId: taskId, stepIndex: stepIndex };
+      row.classList.add("is-confirming");
+      row.querySelector(".detail-step-text").insertAdjacentHTML("afterend", '<span class="confirm-hint">Tocá de nuevo para confirmar</span>');
+      pendingStepConfirmTimer = setTimeout(function () {
+        pendingStepConfirm = null;
+        clearStepConfirmVisual();
+      }, 3000);
+      return;
+    }
+    clearTimeout(pendingStepConfirmTimer);
+    pendingStepConfirm = null;
+    clearStepConfirmVisual();
     var t = tasks.find(function (x) { return x.id === taskId; });
-    if (!t || !t.pasos || !t.pasos[stepIndex]) return;
-    t.pasos[stepIndex].hecho = cb.checked;
+    var idx = Number(stepIndex);
+    if (!t || !t.pasos || !t.pasos[idx]) return;
+    t.pasos[idx].hecho = cb.checked;
     save();
     updateRowProgress(taskId);
   });
@@ -1185,6 +1222,8 @@
   var currentSteps = [];
 
   function renderStepsEditor(steps) {
+    pendingModalStepConfirm = null;
+    clearTimeout(pendingModalStepConfirmTimer);
     var list = $("steps-list");
     if (!steps.length) {
       list.innerHTML = '<div class="steps-empty-hint">Sin pasos cargados todavía.</div>';
@@ -1199,22 +1238,49 @@
     }).join("");
   }
 
-  $("steps-list").addEventListener("change", function (e) {
-    if (!e.target.classList.contains("step-check")) return;
-    var i = Number(e.target.closest(".step-row").getAttribute("data-index"));
-    currentSteps[i].hecho = e.target.checked;
-  });
   $("steps-list").addEventListener("input", function (e) {
     if (!e.target.classList.contains("step-text")) return;
     var i = Number(e.target.closest(".step-row").getAttribute("data-index"));
     currentSteps[i].texto = e.target.value;
   });
+
+  var pendingModalStepConfirm = null;
+  var pendingModalStepConfirmTimer = null;
+  function clearModalStepConfirmVisual() {
+    var row = $("steps-list").querySelector(".step-row.is-confirming");
+    if (row) row.classList.remove("is-confirming");
+  }
+
   $("steps-list").addEventListener("click", function (e) {
-    var btn = e.target.closest(".step-remove");
-    if (!btn) return;
-    var i = Number(btn.closest(".step-row").getAttribute("data-index"));
-    currentSteps.splice(i, 1);
-    renderStepsEditor(currentSteps);
+    var removeBtn = e.target.closest(".step-remove");
+    if (removeBtn) {
+      var ri = Number(removeBtn.closest(".step-row").getAttribute("data-index"));
+      currentSteps.splice(ri, 1);
+      renderStepsEditor(currentSteps);
+      return;
+    }
+    var cb = e.target.closest(".step-check");
+    if (!cb) return;
+    var row = cb.closest(".step-row");
+    var index = row.getAttribute("data-index");
+    var isArmed = pendingModalStepConfirm === index;
+    if (!isArmed) {
+      e.preventDefault();
+      clearModalStepConfirmVisual();
+      clearTimeout(pendingModalStepConfirmTimer);
+      pendingModalStepConfirm = index;
+      row.classList.add("is-confirming");
+      pendingModalStepConfirmTimer = setTimeout(function () {
+        pendingModalStepConfirm = null;
+        clearModalStepConfirmVisual();
+      }, 3000);
+      return;
+    }
+    clearTimeout(pendingModalStepConfirmTimer);
+    pendingModalStepConfirm = null;
+    clearModalStepConfirmVisual();
+    var i = Number(index);
+    currentSteps[i].hecho = cb.checked;
   });
   $("btn-add-step").addEventListener("click", function () {
     currentSteps.push({ texto: "", hecho: false });
