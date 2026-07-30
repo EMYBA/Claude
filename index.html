@@ -1340,6 +1340,7 @@
     } else {
       currentPasosGrid = defaultPasosGrid();
     }
+    $("pasos-grid-wrap").hidden = !t;
     pendingModalPasoKey = null;
     clearTimeout(pendingModalPasoTimer);
     renderModalPasosGrid();
