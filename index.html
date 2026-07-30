@@ -519,73 +519,59 @@
   }
   textarea { resize: vertical; min-height: 56px; font-family: var(--font-ui); }
 
-  .ensayo-grid-scroll {
-    overflow-x: auto;
+  .pasos-grid-scroll {
+    overflow: auto;
     margin-top: 4px;
     border: 1px solid var(--border);
     border-radius: 6px;
     min-width: 0;
+    max-height: 320px;
   }
-  .ensayo-grid-table {
+  .pasos-grid-table {
     border-collapse: collapse;
     width: 100%;
-    min-width: 460px;
+    min-width: 640px;
   }
-  .ensayo-grid-table th, .ensayo-grid-table td {
-    padding: 7px 8px;
+  .pasos-grid-table th, .pasos-grid-table td {
+    padding: 6px;
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 0.72rem;
+    vertical-align: middle;
   }
-  .ensayo-grid-table thead th {
+  .pasos-grid-table thead th {
     font-weight: 600;
     color: var(--ink-soft);
     border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--surface-raised);
   }
-  .ensayo-grid-table tbody th {
+  .pasos-grid-table tbody th {
     text-align: left;
     font-weight: 500;
+    font-size: 0.78rem;
+    white-space: normal;
+    max-width: 150px;
+  }
+  .pasos-grid-table tbody tr:not(:last-child) th,
+  .pasos-grid-table tbody tr:not(:last-child) td {
+    border-bottom: 1px solid var(--border);
+  }
+  .pasos-grid-table tr.pg-row-complete th { color: var(--ink-soft); text-decoration: line-through; }
+  .pg-cell { position: relative; }
+  .pg-check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 0.62rem;
     color: var(--ink-soft);
-    white-space: nowrap;
+    cursor: pointer;
   }
-  .ensayo-grid-table tbody tr:not(:last-child) th,
-  .ensayo-grid-table tbody tr:not(:last-child) td {
-    border-bottom: 1px solid var(--border);
-  }
-  .ensayo-grid-table input[type="checkbox"] { width: auto; margin: 0; }
-  .ensayo-grid-table input[type="checkbox"]:disabled { opacity: 0.35; }
-
-  .steps-field-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .steps-field-head button { font-size: 0.72rem; padding: 3px 8px; }
-  #steps-list { display: flex; flex-direction: column; margin-top: 4px; }
-  .step-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .step-row:last-child { border-bottom: none; }
-  .step-check { width: auto; flex: 0 0 auto; }
-  .step-text {
-    flex: 1 1 auto;
-    border: none;
-    background: transparent;
-    padding: 4px 2px;
-    font-size: 16px;
-    font-weight: 600;
-    border-radius: 4px;
-  }
-  .step-row:has(.step-check:checked) .step-text { text-decoration: line-through; color: var(--ink-soft); }
-  .step-row.is-confirming { background: color-mix(in srgb, var(--accent-soft) 65%, transparent); border-radius: 6px; }
-  .step-row.is-confirming .step-check { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
-  .step-remove { flex: 0 0 auto; padding: 2px 6px; font-size: 0.75rem; color: var(--ink-soft); border-color: transparent; }
-  .step-remove:hover { color: var(--critical); }
-  #btn-add-step { align-self: flex-start; font-size: 0.78rem; padding: 4px 8px; margin-top: 6px; }
+  .pg-check input { width: auto; margin: 0; }
+  .pg-check input:disabled { opacity: 0.35; }
+  .pg-cell.is-confirming { background: color-mix(in srgb, var(--accent-soft) 65%, transparent); border-radius: 4px; }
+  .pg-cell .confirm-hint { display: block; font-size: 0.55rem; white-space: nowrap; }
   .steps-empty-hint { font-size: 0.78rem; color: var(--ink-soft); padding: 6px 0; }
 
   .sr-only {
@@ -727,12 +713,6 @@
         <label for="m-producto">Producto</label>
         <input type="text" id="m-producto" required placeholder="p. ej. Amoxicilina 500 mg" />
       </div>
-      <div class="field full" id="ensayo-grid-wrap">
-        <label>Ensayos</label>
-        <div class="ensayo-grid-scroll">
-          <table class="ensayo-grid-table" id="ensayo-grid-table"></table>
-        </div>
-      </div>
       <div class="field">
         <label for="m-prioridad">Prioridad</label>
         <select id="m-prioridad">
@@ -763,14 +743,11 @@
         <label for="m-bloqueada-por">Esperando…</label>
         <input type="text" id="m-bloqueada-por" placeholder="p. ej. reactivo de referencia, resultado de L-24065, equipo HPLC-2" />
       </div>
-      <div class="field full" id="steps-field-wrap">
-        <div class="steps-field-head">
-          <label style="margin:0;">Pasos del ensayo</label>
-          <button type="button" id="btn-load-steps" class="btn-ghost">Cargar pasos sugeridos</button>
+      <div class="field full" id="pasos-grid-wrap">
+        <label>Pasos por ensayo</label>
+        <div class="pasos-grid-scroll">
+          <table class="pasos-grid-table" id="pasos-grid-table"></table>
         </div>
-        <div id="steps-list"></div>
-        <div id="steps-hint" class="steps-empty-hint" hidden></div>
-        <button type="button" id="btn-add-step" class="btn-ghost">+ agregar paso</button>
       </div>
       <div class="field full">
         <label for="m-notas">Notas</label>
@@ -798,98 +775,119 @@
   };
   var PRIORIDADES = { alta: "Alta", media: "Media", baja: "Baja" };
 
-  var PREP_STEPS = [
-    "Recolección de materiales",
-    "Búsqueda de solventes / carga de agua",
-    "Búsqueda de estándar/es, muestra/s y CR's",
-    "Pesaje de muestras",
-    "Pesaje de estándares",
-    "Resumen y cálculo de cantidades",
-    "Búsqueda y pesaje del placebo",
-    "Preparación o dilución de adecuación",
-    "Preparación de la fase móvil",
-    "Preparación o disponibilidad de los equipos"
-  ];
-  var ENSAYO_PREP_EXTRA_STEPS = {
-    "Disolución": ["Preparación del medio de disolución"]
-  };
-  var DATA_STEP = "Pasaje de datos — generación de planillas de Excel";
-  var CLOSING_STEPS = [
-    "Revisión completa de los datos",
-    "Pasaje de datos a planilla de FC",
-    "Pasaje a OQSAFE de planillas",
-    "Generación de planillas de apertura y cierre de análisis",
-    "Generación y pasaje a PDF de planillas",
-    "Pegado de tickets y planillas en el cuaderno"
-  ];
-  var ENSAYO_FINAL_STEPS = {
-    "Disolución": ["Adecuación del sistema", "Cromatogramas"],
-    "Valoración": ["Cromatogramas", "Impresión"],
-    "Uniformidad de contenido": ["Impresión"],
-    "Sustancias relacionadas": ["Planilla"]
-  };
-  function buildStepsTemplate(ensayo) {
-    var final = ENSAYO_FINAL_STEPS[ensayo];
-    if (!final) return null;
-    var prep = PREP_STEPS.concat(ENSAYO_PREP_EXTRA_STEPS[ensayo] || []);
-    return prep.concat([DATA_STEP]).concat(final).concat(CLOSING_STEPS).map(function (texto) {
-      return { texto: texto, hecho: false };
-    });
-  }
-
   var ENSAYO_GRID_COLUMNS = ["TD", "Val", "UC", "SR", "IOV", "ID", "FC"];
-  var GRID_COL_TO_ENSAYO_NAME = {
-    TD: "Disolución", Val: "Valoración", UC: "Uniformidad de contenido", SR: "Sustancias relacionadas", ID: "Identificación"
-  };
   var LEGACY_ENSAYO_TO_COL = {
     "Disolución": "TD", "Valoración": "Val", "Uniformidad de contenido": "UC",
     "Sustancias relacionadas": "SR", "Identificación": "ID"
   };
-  function ensayoGridSummary(grid) {
-    var applied = ENSAYO_GRID_COLUMNS.filter(function (c) { return grid[c] === "aplica"; });
-    return applied.length ? applied.join(", ") : "Sin ensayos marcados";
-  }
-  function buildStepsTemplateFromGrid(grid) {
-    var applicable = ENSAYO_GRID_COLUMNS.filter(function (c) { return grid[c] === "aplica" && GRID_COL_TO_ENSAYO_NAME[c]; });
-    if (!applicable.length) return null;
-    var prepExtra = [], finalSteps = [];
-    applicable.forEach(function (c) {
-      var name = GRID_COL_TO_ENSAYO_NAME[c];
-      (ENSAYO_PREP_EXTRA_STEPS[name] || []).forEach(function (s) { if (prepExtra.indexOf(s) === -1) prepExtra.push(s); });
-      (ENSAYO_FINAL_STEPS[name] || []).forEach(function (s) { if (finalSteps.indexOf(s) === -1) finalSteps.push(s); });
+  var PASO_ROWS = [
+    { texto: "Recolección de materiales" },
+    { texto: "Búsqueda de solventes / carga de agua" },
+    { texto: "Búsqueda de estándar/es, muestra/s y CR's" },
+    { texto: "Pesaje de muestras" },
+    { texto: "Pesaje de estándares" },
+    { texto: "Resumen y cálculo de cantidades" },
+    { texto: "Búsqueda y pesaje del placebo" },
+    { texto: "Preparación o dilución de adecuación" },
+    { texto: "Preparación de la fase móvil" },
+    { texto: "Preparación o disponibilidad de los equipos" },
+    { texto: "Preparación del medio de disolución", onlyFor: ["TD"] },
+    { texto: "Pasaje de datos — generación de planillas de Excel" },
+    { texto: "Adecuación del sistema", onlyFor: ["TD"] },
+    { texto: "Cromatogramas", onlyFor: ["TD", "Val"] },
+    { texto: "Impresión", onlyFor: ["Val", "UC"] },
+    { texto: "Planilla", onlyFor: ["SR"] },
+    { texto: "Revisión completa de los datos" },
+    { texto: "Pasaje de datos a planilla de FC" },
+    { texto: "Pasaje a OQSAFE de planillas" },
+    { texto: "Generación de planillas de apertura y cierre de análisis" },
+    { texto: "Generación y pasaje a PDF de planillas" },
+    { texto: "Pegado de tickets y planillas en el cuaderno" }
+  ];
+  function defaultPasosGrid() {
+    return PASO_ROWS.map(function (r) {
+      var estados = {};
+      ENSAYO_GRID_COLUMNS.forEach(function (c) {
+        estados[c] = (r.onlyFor && r.onlyFor.indexOf(c) === -1) ? "na" : null;
+      });
+      return { texto: r.texto, estados: estados };
     });
-    return PREP_STEPS.concat(prepExtra).concat([DATA_STEP]).concat(finalSteps).concat(CLOSING_STEPS).map(function (texto) {
-      return { texto: texto, hecho: false };
-    });
   }
-  function buildEnsayoGridHtml(grid) {
-    grid = grid || {};
-    var head = "<th></th>" + ENSAYO_GRID_COLUMNS.map(function (c) { return "<th>" + c + "</th>"; }).join("");
-    var naRow = "<th>N/A</th>" + ENSAYO_GRID_COLUMNS.map(function (c) {
-      return '<td><input type="checkbox" data-col="' + c + '" data-kind="na"' + (grid[c] === "na" ? " checked" : "") + " /></td>";
+  function migratePasosToGrid(t) {
+    var col = LEGACY_ENSAYO_TO_COL[t.ensayo];
+    var grid = defaultPasosGrid();
+    if (!col) return grid;
+    var doneTexts = {};
+    (t.pasos || []).forEach(function (p) { if (p.hecho) doneTexts[p.texto] = true; });
+    grid.forEach(function (row) {
+      ENSAYO_GRID_COLUMNS.forEach(function (c) { if (c !== col) row.estados[c] = "na"; });
+      if (doneTexts[row.texto] && row.estados[col] !== "na") row.estados[col] = "hecho";
+    });
+    return grid;
+  }
+  function isPasoRowComplete(row) {
+    return ENSAYO_GRID_COLUMNS.every(function (c) { return row.estados[c] === "na" || row.estados[c] === "hecho"; });
+  }
+  function pasosGridProgress(grid) {
+    return { done: grid.filter(isPasoRowComplete).length, total: grid.length };
+  }
+  function buildPasosGridTableHtml(grid, confirmKey) {
+    var head = "<th>Paso</th>" + ENSAYO_GRID_COLUMNS.map(function (c) { return "<th>" + c + "</th>"; }).join("");
+    var order = grid.map(function (row, i) { return { row: row, i: i, complete: isPasoRowComplete(row) }; });
+    order.sort(function (a, b) {
+      if (a.complete !== b.complete) return a.complete ? 1 : -1;
+      return a.i - b.i;
+    });
+    var rows = order.map(function (entry) {
+      var row = entry.row, i = entry.i;
+      var cells = ENSAYO_GRID_COLUMNS.map(function (c) {
+        var s = row.estados[c];
+        var confirming = confirmKey === (i + "|" + c + "|na") || confirmKey === (i + "|" + c + "|hecho");
+        return '<td class="pg-cell' + (confirming ? " is-confirming" : "") + '">' +
+          '<label class="pg-check"><input type="checkbox" data-row="' + i + '" data-col="' + c + '" data-kind="na"' + (s === "na" ? " checked" : "") + ' />N/A</label>' +
+          '<label class="pg-check"><input type="checkbox" data-row="' + i + '" data-col="' + c + '" data-kind="hecho"' + (s === "hecho" ? " checked" : "") + (s === "na" ? " disabled" : "") + ' />•</label>' +
+          (confirming ? '<span class="confirm-hint">¿Confirmar?</span>' : "") +
+        "</td>";
+      }).join("");
+      return '<tr class="' + (entry.complete ? "pg-row-complete" : "") + '"><th>' + escapeHtml(row.texto) + "</th>" + cells + "</tr>";
     }).join("");
-    var apRow = "<th>•</th>" + ENSAYO_GRID_COLUMNS.map(function (c) {
-      return '<td><input type="checkbox" data-col="' + c + '" data-kind="aplica"' + (grid[c] === "aplica" ? " checked" : "") + (grid[c] === "na" ? " disabled" : "") + " /></td>";
-    }).join("");
-    return "<thead><tr>" + head + "</tr></thead><tbody><tr>" + naRow + "</tr><tr>" + apRow + "</tr></tbody>";
+    return "<thead><tr>" + head + "</tr></thead><tbody>" + rows + "</tbody>";
   }
-  function setEnsayoGrid(grid) {
-    $("ensayo-grid-table").innerHTML = buildEnsayoGridHtml(grid);
-  }
-  function readEnsayoGrid() {
-    var result = {};
-    ENSAYO_GRID_COLUMNS.forEach(function (c) {
-      var naCb = $("ensayo-grid-table").querySelector('input[data-col="' + c + '"][data-kind="na"]');
-      var apCb = $("ensayo-grid-table").querySelector('input[data-col="' + c + '"][data-kind="aplica"]');
-      if (naCb.checked) result[c] = "na";
-      else if (apCb.checked) result[c] = "aplica";
-    });
-    return result;
+  function buildPasosGridDetailHtml(t) {
+    var confirmKey = null;
+    var prefix = t.id + "|";
+    if (pendingDetailPasoKey && pendingDetailPasoKey.indexOf(prefix) === 0) {
+      confirmKey = pendingDetailPasoKey.slice(prefix.length);
+    }
+    return '<div class="pasos-grid-scroll"><table class="pasos-grid-table" data-task-id="' + t.id + '">' +
+      buildPasosGridTableHtml(t.pasosGrid, confirmKey) +
+    "</table></div>";
   }
 
   var seed = [
     { id: uid(), lote: "L-24089", producto: "Amoxicilina 500 mg", ensayo: "Disolución", prioridad: "alta", estado: "analisis", fecha: addDays(1), notas: "USP <711>, aparato 2.", triaged: true, bloqueada: false, bloqueadaPor: "",
-      pasos: buildStepsTemplate("Disolución").map(function (p, i) { return { texto: p.texto, hecho: i < 5 }; }) },
+      pasos: [
+        "Recolección de materiales",
+        "Búsqueda de solventes / carga de agua",
+        "Búsqueda de estándar/es, muestra/s y CR's",
+        "Pesaje de muestras",
+        "Pesaje de estándares",
+        "Resumen y cálculo de cantidades",
+        "Búsqueda y pesaje del placebo",
+        "Preparación o dilución de adecuación",
+        "Preparación de la fase móvil",
+        "Preparación o disponibilidad de los equipos",
+        "Preparación del medio de disolución",
+        "Pasaje de datos — generación de planillas de Excel",
+        "Adecuación del sistema",
+        "Cromatogramas",
+        "Revisión completa de los datos",
+        "Pasaje de datos a planilla de FC",
+        "Pasaje a OQSAFE de planillas",
+        "Generación de planillas de apertura y cierre de análisis",
+        "Generación y pasaje a PDF de planillas",
+        "Pegado de tickets y planillas en el cuaderno"
+      ].map(function (texto, i) { return { texto: texto, hecho: i < 5 }; }) },
     { id: uid(), lote: "L-24091", producto: "Ibuprofeno 400 mg", ensayo: "Valoración", prioridad: "media", estado: "pendiente", fecha: addDays(3), notas: "", triaged: true, bloqueada: true, bloqueadaPor: "reactivo de referencia (pedido a compras)", pasos: [] },
     { id: uid(), lote: "L-24077", producto: "Paracetamol 1g", ensayo: "Sustancias relacionadas", prioridad: "alta", estado: "rechazado", fecha: addDays(-2), notas: "Resultado fuera de especificación, en investigación.", triaged: true, bloqueada: false, bloqueadaPor: "", pasos: [] },
     { id: uid(), lote: "L-24102", producto: "Omeprazol 20 mg", ensayo: "Microbiológico", prioridad: "baja", estado: "revision", fecha: addDays(5), notas: "", triaged: true, bloqueada: false, bloqueadaPor: "", pasos: [] },
@@ -1036,6 +1034,11 @@
   }
 
   function stepsProgressHtml(t) {
+    if (t.pasosGrid && t.pasosGrid.length) {
+      var prog = pasosGridProgress(t.pasosGrid);
+      var pctG = Math.round((prog.done / prog.total) * 100);
+      return '<div class="steps-progress-wrap"><div class="steps-progress"><div class="steps-progress-bar" style="width:' + pctG + '%;"></div></div><div class="steps-progress-label">' + prog.done + "/" + prog.total + " pasos</div></div>";
+    }
     if (!t.pasos || !t.pasos.length) return "";
     var done = t.pasos.filter(function (s) { return s.hecho; }).length;
     var total = t.pasos.length;
@@ -1045,7 +1048,9 @@
 
   function buildDetailRowHtml(t) {
     var inner;
-    if (!t.pasos || !t.pasos.length) {
+    if (t.pasosGrid && t.pasosGrid.length) {
+      inner = buildPasosGridDetailHtml(t);
+    } else if (!t.pasos || !t.pasos.length) {
       inner = '<div class="steps-empty-hint">Sin pasos cargados. Agregalos con ✎.</div>';
     } else {
       inner = t.pasos.map(function (s, i) {
@@ -1065,7 +1070,9 @@
     var expanded = !!expandedIds[t.id];
     var mainRow = '<tr class="' + (overdue ? "is-overdue" : "") + (expanded ? " is-expanded" : "") + '" data-row-id="' + t.id + '">' +
       '<td class="lote">' + escapeHtml(t.lote) + "</td>" +
-      '<td class="producto-cell"><div class="producto">' + escapeHtml(t.producto) + '</div><div class="ensayo">' + escapeHtml(t.ensayo) + "</div>" + stepsProgressHtml(t) + "</td>" +
+      '<td class="producto-cell"><div class="producto">' + escapeHtml(t.producto) + "</div>" +
+        (t.pasosGrid || !t.ensayo ? "" : '<div class="ensayo">' + escapeHtml(t.ensayo) + "</div>") +
+        stepsProgressHtml(t) + "</td>" +
       '<td class="priority-' + t.prioridad + '">' + PRIORIDADES[t.prioridad] + "</td>" +
       '<td class="fecha' + (overdue ? " overdue" : "") + '">' + formatDate(t.fecha) + "</td>" +
       '<td class="estado-cell"><span class="chip ' + estadoInfo.chip + '">' + estadoInfo.label + "</span>" +
@@ -1199,6 +1206,48 @@
     updateRowProgress(taskId);
   });
 
+  var pendingDetailPasoKey = null;
+  var pendingDetailPasoTimer = null;
+  function renderDetailPasosGrid(t) {
+    var tableEl = bucketsEl.querySelector('.pasos-grid-table[data-task-id="' + t.id + '"]');
+    if (!tableEl) return;
+    var confirmKey = null;
+    var prefix = t.id + "|";
+    if (pendingDetailPasoKey && pendingDetailPasoKey.indexOf(prefix) === 0) {
+      confirmKey = pendingDetailPasoKey.slice(prefix.length);
+    }
+    tableEl.innerHTML = buildPasosGridTableHtml(t.pasosGrid, confirmKey);
+  }
+
+  bucketsEl.addEventListener("click", function (e) {
+    var cb = e.target.closest(".pasos-grid-table input[type=\"checkbox\"]");
+    if (!cb || cb.disabled) return;
+    e.preventDefault();
+    var tableEl = cb.closest(".pasos-grid-table");
+    var taskId = tableEl.getAttribute("data-task-id");
+    var t = tasks.find(function (x) { return x.id === taskId; });
+    if (!t || !t.pasosGrid) return;
+    var i = cb.getAttribute("data-row"), col = cb.getAttribute("data-col"), kind = cb.getAttribute("data-kind");
+    var key = taskId + "|" + i + "|" + col + "|" + kind;
+    if (pendingDetailPasoKey !== key) {
+      clearTimeout(pendingDetailPasoTimer);
+      pendingDetailPasoKey = key;
+      pendingDetailPasoTimer = setTimeout(function () {
+        pendingDetailPasoKey = null;
+        renderDetailPasosGrid(t);
+      }, 3000);
+      renderDetailPasosGrid(t);
+      return;
+    }
+    clearTimeout(pendingDetailPasoTimer);
+    pendingDetailPasoKey = null;
+    var row = t.pasosGrid[Number(i)];
+    row.estados[col] = row.estados[col] === kind ? null : kind;
+    save();
+    renderDetailPasosGrid(t);
+    updateRowProgress(taskId);
+  });
+
   function armDeleteButton(btn) {
     btn.className = "btn-danger-armed";
     btn.textContent = "¿Eliminar?";
@@ -1245,121 +1294,39 @@
     }
   });
 
-  var currentSteps = [];
-
-  function renderStepsEditor(steps) {
-    pendingModalStepConfirm = null;
-    clearTimeout(pendingModalStepConfirmTimer);
-    var list = $("steps-list");
-    if (!steps.length) {
-      list.innerHTML = '<div class="steps-empty-hint">Sin pasos cargados todavía.</div>';
-      return;
-    }
-    list.innerHTML = steps.map(function (s, i) {
-      return '<div class="step-row" data-index="' + i + '">' +
-        '<input type="checkbox" class="step-check"' + (s.hecho ? " checked" : "") + ' aria-label="Marcar paso hecho" />' +
-        '<input type="text" class="step-text" value="' + escapeHtml(s.texto) + '" placeholder="Describir el paso…" />' +
-        '<button type="button" class="btn-ghost step-remove" aria-label="Quitar paso">✕</button>' +
-      "</div>";
-    }).join("");
+  var currentPasosGrid = [];
+  var pendingModalPasoKey = null;
+  var pendingModalPasoTimer = null;
+  function renderModalPasosGrid() {
+    $("pasos-grid-table").innerHTML = buildPasosGridTableHtml(currentPasosGrid, pendingModalPasoKey);
   }
-
-  $("steps-list").addEventListener("input", function (e) {
-    if (!e.target.classList.contains("step-text")) return;
-    var i = Number(e.target.closest(".step-row").getAttribute("data-index"));
-    currentSteps[i].texto = e.target.value;
-  });
-
-  var pendingModalStepConfirm = null;
-  var pendingModalStepConfirmTimer = null;
-  function clearModalStepConfirmVisual() {
-    var row = $("steps-list").querySelector(".step-row.is-confirming");
-    if (row) row.classList.remove("is-confirming");
-  }
-
-  $("steps-list").addEventListener("click", function (e) {
-    var removeBtn = e.target.closest(".step-remove");
-    if (removeBtn) {
-      var ri = Number(removeBtn.closest(".step-row").getAttribute("data-index"));
-      currentSteps.splice(ri, 1);
-      renderStepsEditor(currentSteps);
+  $("pasos-grid-table").addEventListener("click", function (e) {
+    var cb = e.target.closest('input[type="checkbox"]');
+    if (!cb || cb.disabled) return;
+    e.preventDefault();
+    var i = cb.getAttribute("data-row"), col = cb.getAttribute("data-col"), kind = cb.getAttribute("data-kind");
+    var key = i + "|" + col + "|" + kind;
+    if (pendingModalPasoKey !== key) {
+      clearTimeout(pendingModalPasoTimer);
+      pendingModalPasoKey = key;
+      pendingModalPasoTimer = setTimeout(function () { pendingModalPasoKey = null; renderModalPasosGrid(); }, 3000);
+      renderModalPasosGrid();
       return;
     }
-    var cb = e.target.closest(".step-check");
-    if (!cb) return;
-    var row = cb.closest(".step-row");
-    var index = row.getAttribute("data-index");
-    var isArmed = pendingModalStepConfirm === index;
-    if (!isArmed) {
-      e.preventDefault();
-      clearModalStepConfirmVisual();
-      clearTimeout(pendingModalStepConfirmTimer);
-      pendingModalStepConfirm = index;
-      row.classList.add("is-confirming");
-      pendingModalStepConfirmTimer = setTimeout(function () {
-        pendingModalStepConfirm = null;
-        clearModalStepConfirmVisual();
-      }, 3000);
-      return;
-    }
-    clearTimeout(pendingModalStepConfirmTimer);
-    pendingModalStepConfirm = null;
-    clearModalStepConfirmVisual();
-    var i = Number(index);
-    currentSteps[i].hecho = cb.checked;
-  });
-  $("btn-add-step").addEventListener("click", function () {
-    currentSteps.push({ texto: "", hecho: false });
-    renderStepsEditor(currentSteps);
-    var inputs = $("steps-list").querySelectorAll(".step-text");
-    if (inputs.length) inputs[inputs.length - 1].focus();
-  });
-  var stepsHintTimer = null;
-  function showStepsHint(text) {
-    var hint = $("steps-hint");
-    hint.textContent = text;
-    hint.hidden = false;
-    clearTimeout(stepsHintTimer);
-    stepsHintTimer = setTimeout(function () { hint.hidden = true; }, 5000);
-  }
-  $("btn-load-steps").addEventListener("click", function () {
-    var tpl = buildStepsTemplateFromGrid(readEnsayoGrid());
-    if (!tpl) {
-      showStepsHint('Todavía no hay pasos sugeridos para los ensayos marcados. Podés agregarlos manualmente con "+ agregar paso".');
-      return;
-    }
-    $("steps-hint").hidden = true;
-    currentSteps = tpl;
-    renderStepsEditor(currentSteps);
-  });
-
-  $("ensayo-grid-table").addEventListener("change", function (e) {
-    var t = e.target;
-    if (t.tagName !== "INPUT" || t.getAttribute("data-kind") !== "na") return;
-    var col = t.getAttribute("data-col");
-    var apCb = $("ensayo-grid-table").querySelector('input[data-col="' + col + '"][data-kind="aplica"]');
-    if (t.checked) {
-      apCb.checked = false;
-      apCb.disabled = true;
-    } else {
-      apCb.disabled = false;
-    }
+    clearTimeout(pendingModalPasoTimer);
+    pendingModalPasoKey = null;
+    var row = currentPasosGrid[Number(i)];
+    row.estados[col] = row.estados[col] === kind ? null : kind;
+    renderModalPasosGrid();
   });
 
   function openModal(id) {
     form.reset();
-    $("steps-hint").hidden = true;
     var t = id ? tasks.find(function (x) { return x.id === id; }) : null;
     modalTitle.textContent = t ? "Editar tarea" : "Nueva tarea";
     $("m-id").value = t ? t.id : "";
     $("m-lote").value = t && t.lote !== "—" ? t.lote : "";
     $("m-producto").value = t ? t.producto : "";
-    var initialGrid = {};
-    if (t) {
-      if (t.ensayosGrid) initialGrid = t.ensayosGrid;
-      else if (LEGACY_ENSAYO_TO_COL[t.ensayo]) initialGrid[LEGACY_ENSAYO_TO_COL[t.ensayo]] = "aplica";
-    }
-    setEnsayoGrid(initialGrid);
     $("m-prioridad").value = t ? t.prioridad : "media";
     $("m-fecha").value = (t && t.fecha) ? t.fecha : todayStr();
     $("m-estado").value = t ? t.estado : "pendiente";
@@ -1368,8 +1335,14 @@
     $("m-bloqueada").checked = blocked;
     $("m-bloqueada-por").value = t ? t.bloqueadaPor || "" : "";
     $("m-bloqueada-wrap").hidden = !blocked;
-    currentSteps = (t && Array.isArray(t.pasos)) ? t.pasos.map(function (s) { return { texto: s.texto, hecho: s.hecho }; }) : [];
-    renderStepsEditor(currentSteps);
+    if (t) {
+      currentPasosGrid = t.pasosGrid ? t.pasosGrid.map(function (r) { return { texto: r.texto, estados: Object.assign({}, r.estados) }; }) : migratePasosToGrid(t);
+    } else {
+      currentPasosGrid = defaultPasosGrid();
+    }
+    pendingModalPasoKey = null;
+    clearTimeout(pendingModalPasoTimer);
+    renderModalPasosGrid();
     backdrop.hidden = false;
     $("m-lote").focus();
   }
@@ -1387,20 +1360,17 @@
     e.preventDefault();
     var id = $("m-id").value;
     var blocked = $("m-bloqueada").checked;
-    var grid = readEnsayoGrid();
     var base = {
       lote: $("m-lote").value.trim(),
       producto: $("m-producto").value.trim(),
-      ensayo: ensayoGridSummary(grid),
-      ensayosGrid: grid,
+      pasosGrid: currentPasosGrid,
       prioridad: $("m-prioridad").value,
       fecha: $("m-fecha").value,
       estado: $("m-estado").value,
       notas: $("m-notas").value.trim(),
       bloqueada: blocked,
       bloqueadaPor: blocked ? $("m-bloqueada-por").value.trim() : "",
-      triaged: true,
-      pasos: currentSteps.filter(function (s) { return s.texto.trim() !== ""; }).map(function (s) { return { texto: s.texto.trim(), hecho: s.hecho }; })
+      triaged: true
     };
 
     if (!id) {
@@ -1408,6 +1378,8 @@
     } else {
       var existing = tasks.find(function (x) { return x.id === id; });
       Object.assign(existing, base);
+      delete existing.pasos;
+      delete existing.ensayo;
     }
     save();
     closeModal();
