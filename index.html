@@ -510,7 +510,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
-  .modal-grid .full { grid-column: 1 / -1; }
+  .modal-grid .full { grid-column: 1 / -1; min-width: 0; }
   .modal-actions {
     display: flex;
     justify-content: flex-end;
@@ -519,30 +519,40 @@
   }
   textarea { resize: vertical; min-height: 56px; font-family: var(--font-ui); }
 
-  .ensayo-checks {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2px 12px;
+  .ensayo-grid-scroll {
+    overflow-x: auto;
     margin-top: 4px;
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 4px 10px;
+    min-width: 0;
   }
-  .ensayo-check-row {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 6px 2px;
-    font-size: 0.85rem;
-    cursor: pointer;
+  .ensayo-grid-table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 460px;
   }
-  .ensayo-check-row input { width: auto; flex: 0 0 auto; }
-  .ensayo-check-row.is-master {
-    grid-column: 1 / -1;
+  .ensayo-grid-table th, .ensayo-grid-table td {
+    padding: 7px 8px;
+    text-align: center;
+    font-size: 0.8rem;
+  }
+  .ensayo-grid-table thead th {
     font-weight: 600;
+    color: var(--ink-soft);
     border-bottom: 1px solid var(--border);
-    margin-bottom: 2px;
   }
+  .ensayo-grid-table tbody th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .ensayo-grid-table tbody tr:not(:last-child) th,
+  .ensayo-grid-table tbody tr:not(:last-child) td {
+    border-bottom: 1px solid var(--border);
+  }
+  .ensayo-grid-table input[type="checkbox"] { width: auto; margin: 0; }
+  .ensayo-grid-table input[type="checkbox"]:disabled { opacity: 0.35; }
 
   .steps-field-head {
     display: flex;
@@ -599,9 +609,9 @@
     .modal-grid { grid-template-columns: 1fr; }
 
     .bucket .table-wrap { overflow-x: visible; }
-    table { min-width: 0; }
-    thead { display: none; }
-    tbody { display: block; }
+    .bucket table { min-width: 0; }
+    .bucket thead { display: none; }
+    .bucket tbody { display: block; }
 
     tbody tr[data-row-id] {
       display: grid;
@@ -717,28 +727,11 @@
         <label for="m-producto">Producto</label>
         <input type="text" id="m-producto" required placeholder="p. ej. Amoxicilina 500 mg" />
       </div>
-      <div class="field" id="ensayo-single-wrap">
-        <label for="m-ensayo">Tipo de ensayo</label>
-        <select id="m-ensayo">
-          <option>Valoración</option>
-          <option>Disolución</option>
-          <option>Identificación</option>
-          <option>Sustancias relacionadas</option>
-          <option>Uniformidad de contenido</option>
-          <option>Otro</option>
-        </select>
-      </div>
-      <div class="field full" id="m-ensayo-otro-wrap" hidden>
-        <label for="m-ensayo-otro">Especificá qué ensayo es</label>
-        <input type="text" id="m-ensayo-otro" placeholder="p. ej. Contaminación cruzada" />
-      </div>
-      <div class="field full" id="ensayo-multi-wrap" hidden>
-        <label>Tipo(s) de ensayo</label>
-        <div id="ensayo-checks" class="ensayo-checks"></div>
-        <div class="field full" id="ensayo-otro-multi-wrap" hidden>
-          <input type="text" id="ensayo-otro-multi" placeholder="Especificá qué ensayo es…" />
+      <div class="field full" id="ensayo-grid-wrap">
+        <label>Ensayos</label>
+        <div class="ensayo-grid-scroll">
+          <table class="ensayo-grid-table" id="ensayo-grid-table"></table>
         </div>
-        <div id="ensayo-multi-hint" class="steps-empty-hint" hidden></div>
       </div>
       <div class="field">
         <label for="m-prioridad">Prioridad</label>
@@ -844,10 +837,55 @@
     });
   }
 
-  var ENSAYO_TYPES = [
-    "Valoración", "Disolución", "Identificación", "Sustancias relacionadas",
-    "Uniformidad de contenido", "Otro"
-  ];
+  var ENSAYO_GRID_COLUMNS = ["TD", "Val", "UC", "SR", "IOV", "ID", "FC"];
+  var GRID_COL_TO_ENSAYO_NAME = {
+    TD: "Disolución", Val: "Valoración", UC: "Uniformidad de contenido", SR: "Sustancias relacionadas", ID: "Identificación"
+  };
+  var LEGACY_ENSAYO_TO_COL = {
+    "Disolución": "TD", "Valoración": "Val", "Uniformidad de contenido": "UC",
+    "Sustancias relacionadas": "SR", "Identificación": "ID"
+  };
+  function ensayoGridSummary(grid) {
+    var applied = ENSAYO_GRID_COLUMNS.filter(function (c) { return grid[c] === "aplica"; });
+    return applied.length ? applied.join(", ") : "Sin ensayos marcados";
+  }
+  function buildStepsTemplateFromGrid(grid) {
+    var applicable = ENSAYO_GRID_COLUMNS.filter(function (c) { return grid[c] === "aplica" && GRID_COL_TO_ENSAYO_NAME[c]; });
+    if (!applicable.length) return null;
+    var prepExtra = [], finalSteps = [];
+    applicable.forEach(function (c) {
+      var name = GRID_COL_TO_ENSAYO_NAME[c];
+      (ENSAYO_PREP_EXTRA_STEPS[name] || []).forEach(function (s) { if (prepExtra.indexOf(s) === -1) prepExtra.push(s); });
+      (ENSAYO_FINAL_STEPS[name] || []).forEach(function (s) { if (finalSteps.indexOf(s) === -1) finalSteps.push(s); });
+    });
+    return PREP_STEPS.concat(prepExtra).concat([DATA_STEP]).concat(finalSteps).concat(CLOSING_STEPS).map(function (texto) {
+      return { texto: texto, hecho: false };
+    });
+  }
+  function buildEnsayoGridHtml(grid) {
+    grid = grid || {};
+    var head = "<th></th>" + ENSAYO_GRID_COLUMNS.map(function (c) { return "<th>" + c + "</th>"; }).join("");
+    var naRow = "<th>N/A</th>" + ENSAYO_GRID_COLUMNS.map(function (c) {
+      return '<td><input type="checkbox" data-col="' + c + '" data-kind="na"' + (grid[c] === "na" ? " checked" : "") + " /></td>";
+    }).join("");
+    var apRow = "<th>•</th>" + ENSAYO_GRID_COLUMNS.map(function (c) {
+      return '<td><input type="checkbox" data-col="' + c + '" data-kind="aplica"' + (grid[c] === "aplica" ? " checked" : "") + (grid[c] === "na" ? " disabled" : "") + " /></td>";
+    }).join("");
+    return "<thead><tr>" + head + "</tr></thead><tbody><tr>" + naRow + "</tr><tr>" + apRow + "</tr></tbody>";
+  }
+  function setEnsayoGrid(grid) {
+    $("ensayo-grid-table").innerHTML = buildEnsayoGridHtml(grid);
+  }
+  function readEnsayoGrid() {
+    var result = {};
+    ENSAYO_GRID_COLUMNS.forEach(function (c) {
+      var naCb = $("ensayo-grid-table").querySelector('input[data-col="' + c + '"][data-kind="na"]');
+      var apCb = $("ensayo-grid-table").querySelector('input[data-col="' + c + '"][data-kind="aplica"]');
+      if (naCb.checked) result[c] = "na";
+      else if (apCb.checked) result[c] = "aplica";
+    });
+    return result;
+  }
 
   var seed = [
     { id: uid(), lote: "L-24089", producto: "Amoxicilina 500 mg", ensayo: "Disolución", prioridad: "alta", estado: "analisis", fecha: addDays(1), notas: "USP <711>, aparato 2.", triaged: true, bloqueada: false, bloqueadaPor: "",
@@ -1285,9 +1323,9 @@
     stepsHintTimer = setTimeout(function () { hint.hidden = true; }, 5000);
   }
   $("btn-load-steps").addEventListener("click", function () {
-    var tpl = buildStepsTemplate($("m-ensayo").value);
+    var tpl = buildStepsTemplateFromGrid(readEnsayoGrid());
     if (!tpl) {
-      showStepsHint('Todavía no hay pasos sugeridos para "' + $("m-ensayo").value + '". Podés agregarlos manualmente con "+ agregar paso".');
+      showStepsHint('Todavía no hay pasos sugeridos para los ensayos marcados. Podés agregarlos manualmente con "+ agregar paso".');
       return;
     }
     $("steps-hint").hidden = true;
@@ -1295,35 +1333,17 @@
     renderStepsEditor(currentSteps);
   });
 
-  (function initEnsayoChecks() {
-    var container = $("ensayo-checks");
-    var master = '<label class="ensayo-check-row is-master"><input type="checkbox" id="ensayo-check-all" /><span>Producto completo (todos los ensayos)</span></label>';
-    var items = ENSAYO_TYPES.map(function (name) {
-      return '<label class="ensayo-check-row"><input type="checkbox" class="ensayo-check-item" value="' + escapeHtml(name) + '" /><span>' + escapeHtml(name) + "</span></label>";
-    }).join("");
-    container.innerHTML = master + items;
-  })();
-
-  $("ensayo-checks").addEventListener("change", function (e) {
-    if (e.target.id === "ensayo-check-all") {
-      var checked = e.target.checked;
-      $("ensayo-checks").querySelectorAll(".ensayo-check-item").forEach(function (cb) { cb.checked = checked; });
-      $("ensayo-otro-multi-wrap").hidden = !checked;
-      return;
+  $("ensayo-grid-table").addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.tagName !== "INPUT" || t.getAttribute("data-kind") !== "na") return;
+    var col = t.getAttribute("data-col");
+    var apCb = $("ensayo-grid-table").querySelector('input[data-col="' + col + '"][data-kind="aplica"]');
+    if (t.checked) {
+      apCb.checked = false;
+      apCb.disabled = true;
+    } else {
+      apCb.disabled = false;
     }
-    if (!e.target.classList.contains("ensayo-check-item")) return;
-    var items = $("ensayo-checks").querySelectorAll(".ensayo-check-item");
-    var checkedCount = 0;
-    items.forEach(function (cb) { if (cb.checked) checkedCount++; });
-    var master = $("ensayo-check-all");
-    master.checked = checkedCount === items.length;
-    master.indeterminate = checkedCount > 0 && checkedCount < items.length;
-    $("ensayo-multi-hint").hidden = true;
-    if (e.target.value === "Otro") $("ensayo-otro-multi-wrap").hidden = !e.target.checked;
-  });
-
-  $("m-ensayo").addEventListener("change", function () {
-    $("m-ensayo-otro-wrap").hidden = this.value !== "Otro";
   });
 
   function openModal(id) {
@@ -1334,30 +1354,12 @@
     $("m-id").value = t ? t.id : "";
     $("m-lote").value = t && t.lote !== "—" ? t.lote : "";
     $("m-producto").value = t ? t.producto : "";
-    $("ensayo-single-wrap").hidden = !t;
-    $("ensayo-multi-wrap").hidden = !!t;
-    $("steps-field-wrap").hidden = !t;
-    $("ensayo-multi-hint").hidden = true;
-    $("ensayo-otro-multi-wrap").hidden = true;
-    $("ensayo-otro-multi").value = "";
-    $("m-ensayo-otro-wrap").hidden = true;
-    $("m-ensayo-otro").value = "";
-    if (!t) {
-      $("m-ensayo").value = "Valoración";
-      var allCb = $("ensayo-check-all");
-      allCb.checked = false;
-      allCb.indeterminate = false;
-      $("ensayo-checks").querySelectorAll(".ensayo-check-item").forEach(function (cb) { cb.checked = false; });
-    } else {
-      var isKnown = ENSAYO_TYPES.indexOf(t.ensayo) !== -1 && t.ensayo !== "Otro";
-      if (isKnown) {
-        $("m-ensayo").value = t.ensayo;
-      } else {
-        $("m-ensayo").value = "Otro";
-        $("m-ensayo-otro-wrap").hidden = false;
-        $("m-ensayo-otro").value = t.ensayo === "Otro" ? "" : t.ensayo;
-      }
+    var initialGrid = {};
+    if (t) {
+      if (t.ensayosGrid) initialGrid = t.ensayosGrid;
+      else if (LEGACY_ENSAYO_TO_COL[t.ensayo]) initialGrid[LEGACY_ENSAYO_TO_COL[t.ensayo]] = "aplica";
     }
+    setEnsayoGrid(initialGrid);
     $("m-prioridad").value = t ? t.prioridad : "media";
     $("m-fecha").value = (t && t.fecha) ? t.fecha : todayStr();
     $("m-estado").value = t ? t.estado : "pendiente";
@@ -1385,49 +1387,27 @@
     e.preventDefault();
     var id = $("m-id").value;
     var blocked = $("m-bloqueada").checked;
+    var grid = readEnsayoGrid();
     var base = {
       lote: $("m-lote").value.trim(),
       producto: $("m-producto").value.trim(),
+      ensayo: ensayoGridSummary(grid),
+      ensayosGrid: grid,
       prioridad: $("m-prioridad").value,
       fecha: $("m-fecha").value,
       estado: $("m-estado").value,
       notas: $("m-notas").value.trim(),
       bloqueada: blocked,
       bloqueadaPor: blocked ? $("m-bloqueada-por").value.trim() : "",
-      triaged: true
+      triaged: true,
+      pasos: currentSteps.filter(function (s) { return s.texto.trim() !== ""; }).map(function (s) { return { texto: s.texto.trim(), hecho: s.hecho }; })
     };
 
     if (!id) {
-      var ensayos = Array.prototype.map.call(
-        $("ensayo-checks").querySelectorAll(".ensayo-check-item:checked"),
-        function (cb) { return cb.value; }
-      );
-      if (!ensayos.length) {
-        var hint = $("ensayo-multi-hint");
-        hint.textContent = "Elegí al menos un tipo de ensayo.";
-        hint.hidden = false;
-        return;
-      }
-      var otroTextMulti = $("ensayo-otro-multi").value.trim();
-      ensayos.forEach(function (ensayo) {
-        var finalEnsayo = (ensayo === "Otro" && otroTextMulti) ? otroTextMulti : ensayo;
-        var data = Object.assign({}, base, {
-          id: uid(),
-          ensayo: finalEnsayo,
-          pasos: buildStepsTemplate(finalEnsayo) || []
-        });
-        tasks.push(data);
-      });
+      tasks.push(Object.assign({ id: uid() }, base));
     } else {
-      var selectedEnsayo = $("m-ensayo").value;
-      var otroText = $("m-ensayo-otro").value.trim();
-      var finalEnsayoEdit = (selectedEnsayo === "Otro" && otroText) ? otroText : selectedEnsayo;
-      var data = Object.assign({}, base, {
-        ensayo: finalEnsayoEdit,
-        pasos: currentSteps.filter(function (s) { return s.texto.trim() !== ""; }).map(function (s) { return { texto: s.texto.trim(), hecho: s.hecho }; })
-      });
       var existing = tasks.find(function (x) { return x.id === id; });
-      Object.assign(existing, data);
+      Object.assign(existing, base);
     }
     save();
     closeModal();
