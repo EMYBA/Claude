@@ -525,25 +525,33 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     min-width: 0;
-    max-height: 320px;
+    max-height: 360px;
   }
   .pasos-grid-table {
     border-collapse: collapse;
     width: 100%;
-    min-width: 640px;
+    min-width: 680px;
   }
   .pasos-grid-table th, .pasos-grid-table td {
-    padding: 6px;
+    padding: 5px 3px;
     text-align: center;
-    font-size: 0.72rem;
+    font-size: 0.66rem;
     vertical-align: middle;
+    width: 30px;
   }
-  .pasos-grid-table thead th {
+  .pasos-grid-table thead tr:first-child th {
     font-weight: 600;
     color: var(--ink-soft);
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
+    background: var(--surface-raised);
+    z-index: 2;
+  }
+  .pasos-grid-table thead tr:last-child th {
+    font-weight: 600;
+    color: var(--ink-soft);
+    border-bottom: 1px solid var(--border);
     background: var(--surface-raised);
   }
   .pasos-grid-table tbody th {
@@ -551,27 +559,36 @@
     font-weight: 500;
     font-size: 0.78rem;
     white-space: normal;
-    max-width: 150px;
+    width: auto;
   }
+  .pasos-grid-table th:first-child, .pasos-grid-table td:first-child { width: 150px; }
   .pasos-grid-table tbody tr:not(:last-child) th,
   .pasos-grid-table tbody tr:not(:last-child) td {
     border-bottom: 1px solid var(--border);
   }
   .pasos-grid-table tr.pg-row-complete th { color: var(--ink-soft); text-decoration: line-through; }
-  .pg-cell { position: relative; }
-  .pg-check {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    font-size: 0.62rem;
-    color: var(--ink-soft);
-    cursor: pointer;
+  .pasos-grid-table th.pg-group-start, .pasos-grid-table td.pg-group-start {
+    border-left: 2px solid var(--border);
   }
-  .pg-check input { width: auto; margin: 0; }
-  .pg-check input:disabled { opacity: 0.35; }
+  .pg-cell { position: relative; }
+  .pg-cell input[type="checkbox"] { width: 15px; height: 15px; margin: 0; }
+  .pg-cell input[type="checkbox"]:disabled { opacity: 0.3; }
   .pg-cell.is-confirming { background: color-mix(in srgb, var(--accent-soft) 65%, transparent); border-radius: 4px; }
-  .pg-cell .confirm-hint { display: block; font-size: 0.55rem; white-space: nowrap; }
+  .pg-cell .confirm-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    transform: translateX(-50%);
+    font-size: 0.55rem;
+    white-space: nowrap;
+    color: var(--accent);
+    font-weight: 600;
+    background: var(--surface-raised);
+    padding: 1px 3px;
+    border-radius: 3px;
+    box-shadow: var(--shadow);
+    z-index: 1;
+  }
   .steps-empty-hint { font-size: 0.78rem; color: var(--ink-soft); padding: 6px 0; }
 
   .sr-only {
@@ -832,7 +849,12 @@
     return { done: grid.filter(isPasoRowComplete).length, total: grid.length };
   }
   function buildPasosGridTableHtml(grid, confirmKey) {
-    var head = "<th>Paso</th>" + ENSAYO_GRID_COLUMNS.map(function (c) { return "<th>" + c + "</th>"; }).join("");
+    var headTop = '<th rowspan="2">Paso</th>' + ENSAYO_GRID_COLUMNS.map(function (c) {
+      return '<th colspan="2" class="pg-group-start">' + c + "</th>";
+    }).join("");
+    var headSub = ENSAYO_GRID_COLUMNS.map(function () {
+      return '<th class="pg-group-start">N/A</th><th>•</th>';
+    }).join("");
     var order = grid.map(function (row, i) { return { row: row, i: i, complete: isPasoRowComplete(row) }; });
     order.sort(function (a, b) {
       if (a.complete !== b.complete) return a.complete ? 1 : -1;
@@ -842,16 +864,20 @@
       var row = entry.row, i = entry.i;
       var cells = ENSAYO_GRID_COLUMNS.map(function (c) {
         var s = row.estados[c];
-        var confirming = confirmKey === (i + "|" + c + "|na") || confirmKey === (i + "|" + c + "|hecho");
-        return '<td class="pg-cell' + (confirming ? " is-confirming" : "") + '">' +
-          '<label class="pg-check"><input type="checkbox" data-row="' + i + '" data-col="' + c + '" data-kind="na"' + (s === "na" ? " checked" : "") + ' />N/A</label>' +
-          '<label class="pg-check"><input type="checkbox" data-row="' + i + '" data-col="' + c + '" data-kind="hecho"' + (s === "hecho" ? " checked" : "") + (s === "na" ? " disabled" : "") + ' />•</label>' +
-          (confirming ? '<span class="confirm-hint">¿Confirmar?</span>' : "") +
-        "</td>";
+        var naConfirm = confirmKey === (i + "|" + c + "|na");
+        var hechoConfirm = confirmKey === (i + "|" + c + "|hecho");
+        return '<td class="pg-cell pg-group-start' + (naConfirm ? " is-confirming" : "") + '">' +
+            '<input type="checkbox" data-row="' + i + '" data-col="' + c + '" data-kind="na"' + (s === "na" ? " checked" : "") + ' aria-label="N/A ' + c + '" />' +
+            (naConfirm ? '<span class="confirm-hint">¿Confirmar?</span>' : "") +
+          "</td>" +
+          '<td class="pg-cell' + (hechoConfirm ? " is-confirming" : "") + '">' +
+            '<input type="checkbox" data-row="' + i + '" data-col="' + c + '" data-kind="hecho"' + (s === "hecho" ? " checked" : "") + (s === "na" ? " disabled" : "") + ' aria-label="Hecho ' + c + '" />' +
+            (hechoConfirm ? '<span class="confirm-hint">¿Confirmar?</span>' : "") +
+          "</td>";
       }).join("");
       return '<tr class="' + (entry.complete ? "pg-row-complete" : "") + '"><th>' + escapeHtml(row.texto) + "</th>" + cells + "</tr>";
     }).join("");
-    return "<thead><tr>" + head + "</tr></thead><tbody>" + rows + "</tbody>";
+    return "<thead><tr>" + headTop + "</tr><tr>" + headSub + "</tr></thead><tbody>" + rows + "</tbody>";
   }
   function buildPasosGridDetailHtml(t) {
     var confirmKey = null;
