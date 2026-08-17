@@ -519,18 +519,22 @@
   }
   textarea { resize: vertical; min-height: 56px; font-family: var(--font-ui); }
 
-  .pasos-grid-scroll {
-    overflow: auto;
+  .pasos-grid-frame {
     margin-top: 4px;
     border: 1px solid var(--border);
     border-radius: 6px;
+    overflow: hidden;
+    max-height: 360px;
+  }
+  .pasos-grid-scroll {
+    overflow: auto;
     min-width: 0;
     max-height: 360px;
   }
   .pasos-grid-table {
     border-collapse: collapse;
     width: 100%;
-    min-width: 660px;
+    min-width: 680px;
   }
   .pasos-grid-table th, .pasos-grid-table td {
     padding: 6px 4px;
@@ -551,8 +555,11 @@
     text-align: left;
     font-weight: 500;
     font-size: 0.78rem;
-    white-space: normal;
-    width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 170px;
+    max-width: 170px;
   }
   .pasos-grid-table td:not(:first-child) { min-width: 84px; }
   .pasos-grid-table tbody tr:nth-child(even) td,
@@ -767,8 +774,10 @@
       </div>
       <div class="field full" id="pasos-grid-wrap">
         <label>Pasos por ensayo</label>
-        <div class="pasos-grid-scroll">
-          <table class="pasos-grid-table" id="pasos-grid-table"></table>
+        <div class="pasos-grid-frame">
+          <div class="pasos-grid-scroll">
+            <table class="pasos-grid-table" id="pasos-grid-table"></table>
+          </div>
         </div>
       </div>
       <div class="field full">
@@ -877,7 +886,7 @@
           "</label>" +
         "</span></td>";
       }).join("");
-      return '<tr class="' + (entry.complete ? "pg-row-complete" : "") + '"><th>' + escapeHtml(row.texto) + "</th>" + cells + "</tr>";
+      return '<tr class="' + (entry.complete ? "pg-row-complete" : "") + '"><th title="' + escapeHtml(row.texto) + '">' + escapeHtml(row.texto) + "</th>" + cells + "</tr>";
     }).join("");
     return "<thead><tr>" + head + "</tr></thead><tbody>" + rows + "</tbody>";
   }
@@ -887,9 +896,9 @@
     if (pendingDetailPasoKey && pendingDetailPasoKey.indexOf(prefix) === 0) {
       confirmKey = pendingDetailPasoKey.slice(prefix.length);
     }
-    return '<div class="pasos-grid-scroll"><table class="pasos-grid-table" data-task-id="' + t.id + '">' +
+    return '<div class="pasos-grid-frame"><div class="pasos-grid-scroll"><table class="pasos-grid-table" data-task-id="' + t.id + '">' +
       buildPasosGridTableHtml(t.pasosGrid, confirmKey) +
-    "</table></div>";
+    "</table></div></div>";
   }
 
   var seed = [
