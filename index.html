@@ -624,9 +624,9 @@
     .modal-grid { grid-template-columns: 1fr; }
 
     .bucket .table-wrap { overflow-x: visible; }
-    .bucket table { min-width: 0; }
-    .bucket thead { display: none; }
-    .bucket tbody { display: block; }
+    .task-table { min-width: 0; }
+    .task-table > thead { display: none; }
+    .task-table > tbody { display: block; }
 
     tbody tr[data-row-id] {
       display: grid;
@@ -661,7 +661,7 @@
     td.actions-cell .row-actions { justify-content: flex-end; padding-top: 4px; border-top: 1px dashed var(--border); }
 
     tbody tr.steps-detail-row { display: block; }
-    .steps-detail-row td { display: block; padding: 0; }
+    .steps-detail-row > td { display: block; padding: 0; }
   }
 </style>
 </head>
@@ -703,21 +703,6 @@
         <option value="rechazado">Rechazado / OOS</option>
       </select>
     </div>
-    <div class="field">
-      <label for="f-prioridad">Prioridad</label>
-      <select id="f-prioridad">
-        <option value="">Todas</option>
-        <option value="alta">Alta</option>
-        <option value="media">Media</option>
-        <option value="baja">Baja</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="f-ensayo">Tipo de ensayo</label>
-      <select id="f-ensayo">
-        <option value="">Todos</option>
-      </select>
-    </div>
     <div class="spacer"></div>
     <button class="btn-primary" id="btn-new" type="button">+ Nueva tarea</button>
   </section>
@@ -741,14 +726,6 @@
       <div class="field">
         <label for="m-producto">Producto</label>
         <input type="text" id="m-producto" required placeholder="p. ej. Amoxicilina 500 mg" />
-      </div>
-      <div class="field">
-        <label for="m-prioridad">Prioridad</label>
-        <select id="m-prioridad">
-          <option value="alta">Alta</option>
-          <option value="media" selected>Media</option>
-          <option value="baja">Baja</option>
-        </select>
       </div>
       <div class="field">
         <label for="m-fecha">Fecha límite</label>
@@ -964,8 +941,7 @@
   ];
 
   var $ = function (id) { return document.getElementById(id); };
-  var fSearch = $("f-search"), fEstado = $("f-estado"), fPrioridad = $("f-prioridad"),
-      fEnsayo = $("f-ensayo");
+  var fSearch = $("f-search"), fEstado = $("f-estado");
   var bucketsEl = $("buckets"), emptyState = $("empty-state"), statsEl = $("stats");
   var backdrop = $("modal-backdrop"), form = $("task-form"), modalTitle = $("modal-title");
   var quickForm = $("quick-form"), quickInput = $("quick-input");
@@ -982,26 +958,6 @@
     });
   }
 
-  function refreshFacetOptions() {
-    var ensayos = uniqueSorted(tasks.map(function (t) { return t.ensayo; }));
-    fillSelect(fEnsayo, ensayos);
-  }
-  function uniqueSorted(arr) {
-    var seen = {}; var out = [];
-    arr.forEach(function (v) { if (v && !seen[v]) { seen[v] = true; out.push(v); } });
-    out.sort();
-    return out;
-  }
-  function fillSelect(select, values) {
-    var current = select.value;
-    select.innerHTML = '<option value="">Todos</option>';
-    values.forEach(function (v) {
-      var opt = document.createElement("option");
-      opt.value = v; opt.textContent = v;
-      select.appendChild(opt);
-    });
-    if (values.indexOf(current) !== -1) select.value = current;
-  }
 
   function computeStats() {
     var today = todayStr();
@@ -1037,8 +993,6 @@
     var q = fSearch.value.trim().toLowerCase();
     return list.filter(function (t) {
       if (fEstado.value && t.estado !== fEstado.value) return false;
-      if (fPrioridad.value && t.prioridad !== fPrioridad.value) return false;
-      if (fEnsayo.value && t.ensayo !== fEnsayo.value) return false;
       if (q) {
         var hay = (t.lote + " " + t.producto).toLowerCase();
         if (hay.indexOf(q) === -1) return false;
@@ -1129,7 +1083,7 @@
     var cls = "bucket" + (def.dashed ? " is-inbox" : "");
     return '<details class="' + cls + '" data-bucket="' + def.key + '" style="--bucket-color:' + def.color + ';"' + (isOpen ? " open" : "") + ">" +
       '<summary><span class="bucket-name">' + def.label + '</span><span class="bucket-count">' + list.length + '</span><span class="bucket-hint">' + def.hint + "</span></summary>" +
-      '<div class="table-wrap"><table><thead><tr>' +
+      '<div class="table-wrap"><table class="task-table"><thead><tr>' +
         "<th>Lote</th><th>Producto / Ensayo</th><th>Prioridad</th><th>Vence</th><th>Estado</th><th style=\"width:1%;\"></th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
     "</details>";
@@ -1137,7 +1091,6 @@
 
   function render() {
     renderStats();
-    refreshFacetOptions();
     var filtered = applyFilters(tasks);
     var groups = bucketize(filtered);
     emptyState.hidden = filtered.length !== 0;
@@ -1160,7 +1113,7 @@
     return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
   }
 
-  [fSearch, fEstado, fPrioridad, fEnsayo].forEach(function (el) {
+  [fSearch, fEstado].forEach(function (el) {
     el.addEventListener("input", render);
   });
 
@@ -1364,7 +1317,6 @@
     $("m-id").value = t ? t.id : "";
     $("m-lote").value = t && t.lote !== "—" ? t.lote : "";
     $("m-producto").value = t ? t.producto : "";
-    $("m-prioridad").value = t ? t.prioridad : "media";
     $("m-fecha").value = (t && t.fecha) ? t.fecha : todayStr();
     $("m-estado").value = t ? t.estado : "pendiente";
     $("m-notas").value = t ? t.notas || "" : "";
@@ -1377,7 +1329,6 @@
     } else {
       currentPasosGrid = defaultPasosGrid();
     }
-    $("pasos-grid-wrap").hidden = !t;
     pendingModalPasoKey = null;
     clearTimeout(pendingModalPasoTimer);
     renderModalPasosGrid();
@@ -1402,7 +1353,6 @@
       lote: $("m-lote").value.trim(),
       producto: $("m-producto").value.trim(),
       pasosGrid: currentPasosGrid,
-      prioridad: $("m-prioridad").value,
       fecha: $("m-fecha").value,
       estado: $("m-estado").value,
       notas: $("m-notas").value.trim(),
@@ -1412,7 +1362,7 @@
     };
 
     if (!id) {
-      tasks.push(Object.assign({ id: uid() }, base));
+      tasks.push(Object.assign({ id: uid(), prioridad: "media" }, base));
     } else {
       var existing = tasks.find(function (x) { return x.id === id; });
       Object.assign(existing, base);
